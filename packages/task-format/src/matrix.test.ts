@@ -88,6 +88,8 @@ describe("deterministic matrix expansion", () => {
       assertions: [{ command: ["node", "b", "2"] }],
       run_policy: { n: 7 }
     });
+    expect(expanded[0]?.fieldOrigins.fixture).toBe(baseTask.path);
+    expect(expanded[0]?.fieldOrigins.assertions).toBe(baseTask.path);
   });
 
   it("is byte-stable and applies partial exclusion selectors deterministically", () => {

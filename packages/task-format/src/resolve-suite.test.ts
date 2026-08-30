@@ -60,6 +60,7 @@ describe("suite resolution and canonical content hashes", () => {
       "alpha-task"
     ]);
     expect(resolved.tasks.every((task) => /^[0-9a-f]{64}$/u.test(task.contentHash))).toBe(true);
+    expect(resolved.tasks.every((task) => task.fieldOrigins.fixture === task.path)).toBe(true);
     expect(resolved.suiteContentHash).toBe(
       createHash("sha256")
         .update(canonicalJson(resolved.tasks.map((task) => task.contentHash)))
