@@ -203,7 +203,7 @@ rules. The full set:
 | [MARKETING.md](docs/MARKETING.md) | Positioning, launch assets, gate-tied launch sequencing |
 | [GLOSSARY.md](docs/GLOSSARY.md) | Controlled vocabulary |
 | [OPEN_QUESTIONS.md](docs/OPEN_QUESTIONS.md) | Deferred decisions with fail-closed defaults and reopen triggers |
-| [decisions/](docs/decisions/) | Accepted ADRs 0001–0012 |
+| [decisions/](docs/decisions/) | Accepted ADRs 0001–0013 |
 
 When documents disagree, the precedence order in
 [docs/README.md](docs/README.md) controls, ending with the rule that a
