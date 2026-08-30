@@ -5,12 +5,24 @@ import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import type {
   AssertionCommandRunner,
   CommandExecutionRequest,
-  CommandExecutionResult
+  CommandExecutionResult,
+  DeadlineScheduler
 } from "./types.js";
 
 export interface HostCommandRunnerOptions {
   readonly workspaceRoot: string;
   readonly environment: Readonly<Record<string, string>>;
+  readonly deadlineScheduler: DeadlineScheduler;
+}
+
+export function createSystemDeadlineScheduler(): DeadlineScheduler {
+  return {
+    schedule: (delayMs, callback) => {
+      const timer = setTimeout(callback, delayMs);
+      timer.unref();
+      return { cancel: () => clearTimeout(timer) };
+    }
+  };
 }
 
 function contained(root: string, candidate: string): boolean {
@@ -41,10 +53,16 @@ function stopProcessGroup(child: ChildProcessWithoutNullStreams): void {
 class HostCommandRunner implements AssertionCommandRunner {
   readonly #workspaceRoot: string;
   readonly #environment: Readonly<Record<string, string>>;
+  readonly #deadlineScheduler: DeadlineScheduler;
 
-  constructor(workspaceRoot: string, environment: Readonly<Record<string, string>>) {
+  constructor(
+    workspaceRoot: string,
+    environment: Readonly<Record<string, string>>,
+    deadlineScheduler: DeadlineScheduler
+  ) {
     this.#workspaceRoot = workspaceRoot;
     this.#environment = Object.freeze({ ...environment });
+    this.#deadlineScheduler = deadlineScheduler;
   }
 
   async run(
@@ -94,7 +112,7 @@ class HostCommandRunner implements AssertionCommandRunner {
           return;
         }
         settled = true;
-        clearTimeout(timeout);
+        timeout.cancel();
         signal.removeEventListener("abort", onAbort);
         resolveResult(result);
       };
@@ -103,7 +121,7 @@ class HostCommandRunner implements AssertionCommandRunner {
           return;
         }
         settled = true;
-        clearTimeout(timeout);
+        timeout.cancel();
         signal.removeEventListener("abort", onAbort);
         reject(error);
       };
@@ -154,11 +172,10 @@ class HostCommandRunner implements AssertionCommandRunner {
         });
       });
 
-      const timeout = setTimeout(() => {
+      const timeout = this.#deadlineScheduler.schedule(request.timeoutMs, () => {
         terminal ??= { status: "timeout", timeoutMs: request.timeoutMs };
         stopProcessGroup(child);
-      }, request.timeoutMs);
-      timeout.unref();
+      });
       signal.addEventListener("abort", onAbort, { once: true });
     });
   }
@@ -168,5 +185,5 @@ export async function createHostCommandRunner(
   options: HostCommandRunnerOptions
 ): Promise<AssertionCommandRunner> {
   const workspaceRoot = await realpath(resolve(options.workspaceRoot));
-  return new HostCommandRunner(workspaceRoot, options.environment);
+  return new HostCommandRunner(workspaceRoot, options.environment, options.deadlineScheduler);
 }

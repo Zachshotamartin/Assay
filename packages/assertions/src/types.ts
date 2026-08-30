@@ -131,6 +131,14 @@ export interface AssertionCommandRunner {
   run(request: CommandExecutionRequest, signal: AbortSignal): Promise<CommandExecutionResult>;
 }
 
+export interface DeadlineHandle {
+  cancel(): void;
+}
+
+export interface DeadlineScheduler {
+  schedule(delayMs: number, callback: () => void): DeadlineHandle;
+}
+
 export interface AssertionExecutionContext {
   readonly workspaceRoot: string;
   readonly fixtureRoot: string;
@@ -144,3 +152,70 @@ export interface AssertionExecutionContext {
 export type DeterministicAssertionResult = AssertionResult & {
   readonly type: DeterministicAssertionType;
 };
+
+export interface CheckerAssertionSpec {
+  readonly type: "checker";
+  readonly name?: string;
+  readonly module: string;
+  readonly timeout_ms?: number;
+  readonly memory_mb?: number;
+}
+
+export interface CheckerTaskDefinition {
+  readonly formatVersion: "1.0";
+  readonly id: string;
+  readonly title: string;
+  readonly tags: readonly string[];
+  readonly fixture: unknown;
+  readonly prompt: string;
+  readonly toolset: unknown;
+  readonly sandbox: unknown;
+  readonly assertions: readonly unknown[];
+  readonly [key: string]: unknown;
+}
+
+export interface WorkspaceReader {
+  exists(path: string): Promise<boolean>;
+  readText(path: string): Promise<string>;
+  readBytes(path: string): Promise<Uint8Array>;
+  list(path?: string): Promise<readonly string[]>;
+}
+
+export interface TrajectoryReader {
+  events(): readonly unknown[];
+}
+
+export interface CheckerContext {
+  readonly task: CheckerTaskDefinition;
+  readonly workspace: WorkspaceReader;
+  readonly trajectory: TrajectoryReader;
+  readonly log: (message: string) => void;
+}
+
+export interface CheckerVerdict {
+  readonly verdict: "pass" | "fail";
+  readonly observed: string;
+  readonly expectation: string;
+  readonly details?: Readonly<Record<string, unknown>>;
+}
+
+export interface CheckerExecutionContext {
+  readonly projectRoot: string;
+  readonly workspaceRoot: string;
+  readonly task: CheckerTaskDefinition;
+  readonly trajectory: readonly unknown[];
+  readonly clock: Clock;
+  readonly deadlineScheduler: DeadlineScheduler;
+}
+
+export type CheckerAssertionResult = AssertionResult & {
+  readonly type: "checker";
+  readonly details?: Readonly<Record<string, unknown>>;
+  readonly logs: readonly string[];
+};
+
+export interface ValidatedCheckerModule {
+  readonly modulePath: string;
+  readonly checkerRoot: string;
+  readonly sourceFiles: readonly string[];
+}

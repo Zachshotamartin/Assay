@@ -1,4 +1,4 @@
-import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, mkdir, readFile, realpath, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -7,6 +7,7 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import {
   evaluateCheckerAssertion,
+  createSystemDeadlineScheduler,
   validateAssertionLayerOrder,
   validateCheckerModule,
   type CheckerAssertionSpec,
@@ -56,9 +57,20 @@ function executionContext(
   return {
     projectRoot,
     workspaceRoot,
-    task: Object.freeze({ format_version: "1.0", id: "checker-task" }),
+    task: Object.freeze({
+      formatVersion: "1.0",
+      id: "checker-task",
+      title: "Checker task",
+      tags: [],
+      fixture: {},
+      prompt: "check",
+      toolset: {},
+      sandbox: {},
+      assertions: []
+    }),
     trajectory: Object.freeze([{ type: "text_output", text: "done" }]),
     clock: clock(),
+    deadlineScheduler: createSystemDeadlineScheduler(),
     ...overrides
   };
 }
@@ -91,11 +103,12 @@ export async function check(ctx: CheckerContext): Promise<CheckerVerdict> {
 `
     });
 
+    const canonicalProject = await realpath(project);
     await expect(validateCheckerModule(spec("checks/pass.checker.ts"), project)).resolves.toMatchObject({
-      modulePath: join(project, "checks", "pass.checker.ts"),
+      modulePath: join(canonicalProject, "checks", "pass.checker.ts"),
       sourceFiles: [
-        join(project, "checks", "helper.ts"),
-        join(project, "checks", "pass.checker.ts")
+        join(canonicalProject, "checks", "helper.ts"),
+        join(canonicalProject, "checks", "pass.checker.ts")
       ]
     });
   });
@@ -279,7 +292,18 @@ export async function check(ctx: CheckerContext): Promise<CheckerVerdict> {
 }
 `
     });
-    const task = { format_version: "1.0", id: "checker-task", nested: { value: 1 } };
+    const task = {
+      formatVersion: "1.0" as const,
+      id: "checker-task",
+      title: "Checker task",
+      tags: [] as readonly string[],
+      fixture: {},
+      prompt: "check",
+      toolset: {},
+      sandbox: {},
+      assertions: [] as readonly unknown[],
+      nested: { value: 1 }
+    };
     const result = await evaluateCheckerAssertion(
       spec("checks/restricted.checker.ts"),
       executionContext(project, workspace, { task }),
@@ -287,7 +311,18 @@ export async function check(ctx: CheckerContext): Promise<CheckerVerdict> {
     );
 
     expect(result).toMatchObject({ verdict: "pass" });
-    expect(task).toEqual({ format_version: "1.0", id: "checker-task", nested: { value: 1 } });
+    expect(task).toEqual({
+      formatVersion: "1.0",
+      id: "checker-task",
+      title: "Checker task",
+      tags: [],
+      fixture: {},
+      prompt: "check",
+      toolset: {},
+      sandbox: {},
+      assertions: [],
+      nested: { value: 1 }
+    });
     await expect(readFile(join(workspace, "value.txt"), "utf8")).resolves.toBe("workspace value");
   });
 

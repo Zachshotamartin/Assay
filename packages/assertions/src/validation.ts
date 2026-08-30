@@ -151,6 +151,9 @@ export function validateSafeRegex(pattern: unknown, field = "regex"): RegExp {
   if (/\((?:[^()\\]|\\.)*[*+{](?:[^()\\]|\\.)*\)[*+{?]/u.test(pattern)) {
     return invalid("regex-complexity", `${field} contains a nested quantified group`);
   }
+  if (/\((?:\?:)?(?:[^()\\]|\\.)*\|(?:[^()\\]|\\.)*\)[*+{?]/u.test(pattern)) {
+    return invalid("regex-complexity", `${field} contains a quantified alternation`);
+  }
   if (/\.\*(?:[^|)]*\.\*)/u.test(pattern)) {
     return invalid("regex-complexity", `${field} contains repeated unbounded wildcards`);
   }

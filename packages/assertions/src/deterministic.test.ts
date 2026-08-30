@@ -8,6 +8,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
   ASSERTION_OUTPUT_LIMIT_BYTES,
   createHostCommandRunner,
+  createSystemDeadlineScheduler,
   evaluateDeterministicAssertion,
   evaluateDeterministicAssertions,
   validateDeterministicAssertion,
@@ -15,6 +16,7 @@ import {
   type AssertionExecutionContext,
   type CommandExecutionRequest,
   type CommandExecutionResult,
+  type DeadlineScheduler,
   type DeterministicAssertionSpec
 } from "./index.js";
 
@@ -322,7 +324,8 @@ describe("host command boundary", () => {
     const workspace = await temporaryDirectory("assay-assert-host-command-");
     const runner = await createHostCommandRunner({
       workspaceRoot: workspace,
-      environment: { PATH: process.env["PATH"] ?? "/usr/bin:/bin" }
+      environment: { PATH: process.env["PATH"] ?? "/usr/bin:/bin" },
+      deadlineScheduler: createSystemDeadlineScheduler()
     });
     const request: CommandExecutionRequest = {
       argv: [process.execPath, "-e", "process.stdout.write(process.argv[1])", "$(touch should-not-exist)"],
@@ -348,7 +351,8 @@ describe("host command boundary", () => {
     const workspace = await temporaryDirectory("assay-assert-host-bounds-");
     const runner = await createHostCommandRunner({
       workspaceRoot: workspace,
-      environment: { PATH: process.env["PATH"] ?? "/usr/bin:/bin" }
+      environment: { PATH: process.env["PATH"] ?? "/usr/bin:/bin" },
+      deadlineScheduler: createSystemDeadlineScheduler()
     });
     const signal = new AbortController().signal;
 
@@ -374,6 +378,36 @@ describe("host command boundary", () => {
       maxOutputBytes: 32
     }, controller.signal)).rejects.toMatchObject({ name: "AbortError" });
   });
+
+  it("enforces command timeouts through the injected deadline scheduler", async () => {
+    const workspace = await temporaryDirectory("assay-assert-host-deadline-");
+    let fireDeadline: (() => void) | undefined;
+    let cancelled = false;
+    const deadlineScheduler: DeadlineScheduler = {
+      schedule: (_delayMs, callback) => {
+        fireDeadline = callback;
+        return { cancel: () => { cancelled = true; } };
+      }
+    };
+    const runner = await createHostCommandRunner({
+      workspaceRoot: workspace,
+      environment: { PATH: process.env["PATH"] ?? "/usr/bin:/bin" },
+      deadlineScheduler
+    });
+    const pending = runner.run({
+      argv: [process.execPath, "-e", "setInterval(() => {}, 1000)"],
+      cwd: workspace,
+      timeoutMs: 1_234,
+      maxOutputBytes: 32
+    }, new AbortController().signal);
+    while (fireDeadline === undefined) {
+      await new Promise<void>((resolveReady) => setImmediate(resolveReady));
+    }
+    fireDeadline();
+
+    await expect(pending).resolves.toEqual({ status: "timeout", timeoutMs: 1_234 });
+    expect(cancelled).toBe(true);
+  });
 });
 
 describe("assertion validation boundary", () => {
@@ -384,7 +418,8 @@ describe("assertion validation boundary", () => {
     { type: "tests_pass", command: [], timeout_ms: 1000 },
     { type: "tests_pass", command: ["node"], cwd: "../../outside", timeout_ms: 1000 },
     { type: "command_output", command: ["node"], equals: "x", contains: "x" },
-    { type: "file_contains", path: "safe", regex: "(a+)+$" }
+    { type: "file_contains", path: "safe", regex: "(a+)+$" },
+    { type: "file_contains", path: "safe", regex: "^(a|aa)+$" }
   ])("rejects invalid or escaping specs before effects: $type", (spec) => {
     expect(() => validateDeterministicAssertion(spec)).toThrow(expect.objectContaining({
       category: "task_invalid"

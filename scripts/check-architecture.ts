@@ -9,7 +9,8 @@ export type ArchitectureViolationCode =
   | "package-imports-app"
   | "imports-app"
   | "workspace-deep-import"
-  | "undeclared-workspace-dependency";
+  | "undeclared-workspace-dependency"
+  | "checker-worker-import";
 
 export interface ArchitectureViolation {
   readonly code: ArchitectureViolationCode;
@@ -237,7 +238,24 @@ export async function inspectArchitecture(rootDir: string): Promise<readonly Arc
     for (const file of await sourceFiles(importer.absolutePath)) {
       const source = await readFile(file, "utf8");
       const sourceFile = ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true);
+      const repositoryPath = slash(relative(absoluteRoot, file));
       for (const site of importSites(sourceFile)) {
+        if (
+          repositoryPath === "packages/assertions/src/checker-worker-entry.ts" &&
+          site.specifier !== "node:worker_threads"
+        ) {
+          const location = sourceFile.getLineAndCharacterOfPosition(site.position);
+          violations.push({
+            code: "checker-worker-import",
+            file: repositoryPath,
+            line: location.line + 1,
+            column: location.character + 1,
+            importer: importer.path,
+            imported: "checker-worker-entry-allowlist",
+            specifier: site.specifier
+          });
+          continue;
+        }
         const target = workspaceForSpecifier(site.specifier, file, workspaces);
         if (target === undefined) {
           continue;
@@ -249,7 +267,7 @@ export async function inspectArchitecture(rootDir: string): Promise<readonly Arc
         const location = sourceFile.getLineAndCharacterOfPosition(site.position);
         violations.push({
           code,
-          file: slash(relative(absoluteRoot, file)),
+          file: repositoryPath,
           line: location.line + 1,
           column: location.character + 1,
           importer: importer.path,
