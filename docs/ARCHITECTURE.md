@@ -30,7 +30,7 @@ Companion documents:
 - [PRIVACY_AND_DATA.md](./PRIVACY_AND_DATA.md) — data locality, retention,
   export, deletion.
 - [LANDSCAPE.md](./LANDSCAPE.md) — descriptive competitive context.
-- [decisions/](./decisions/) — ADR-0001 through ADR-0013.
+- [decisions/](./decisions/) — ADR-0001 through ADR-0014.
 
 ## 1. Architecture objective and constraints
 
