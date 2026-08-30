@@ -156,4 +156,129 @@ describe("suite resolution and canonical content hashes", () => {
     );
     expect(toTaggedHashTree(0.5)).toEqual({ type: "number", value: "0.5" });
   });
+
+  it("applies any_of, all_of, and none_of together", async () => {
+    const suite: LoadedYaml<SuiteDocument> = {
+      path: "/project/core.suite.yaml",
+      source: "",
+      document: {
+        ...suiteDocument,
+        tags: {
+          any_of: ["candidate", "fallback"],
+          all_of: ["stable"],
+          none_of: ["quarantined"]
+        }
+      }
+    };
+    const tasks: Readonly<Record<string, TaskDocument>> = {
+      "/project/tasks/selected.task.yaml": concreteTask("selected-task", ["candidate", "stable"]),
+      "/project/tasks/no-any.task.yaml": concreteTask("no-any-task", ["stable"]),
+      "/project/tasks/no-all.task.yaml": concreteTask("no-all-task", ["candidate"]),
+      "/project/tasks/blocked.task.yaml": concreteTask("blocked-task", ["candidate", "stable", "quarantined"])
+    };
+
+    const resolved = await resolveSuite(suite, {
+      projectRoot: "/project",
+      realpath: async (path) => path,
+      expandInclude: async () => Object.keys(tasks),
+      loadTask: async (path) => loadedTask(path, tasks[path]!)
+    });
+
+    expect(resolved.tasks.map((task) => task.document["id"])).toEqual(["selected-task"]);
+  });
+
+  it("expands a matrix include through the same deterministic suite path", async () => {
+    const suite: LoadedYaml<SuiteDocument> = {
+      path: "/project/core.suite.yaml",
+      source: "",
+      document: { ...suiteDocument, include: ["tasks/variants.matrix.yaml"] }
+    };
+    const matrixPath = "/project/tasks/variants.matrix.yaml";
+    const basePath = "/project/tasks/base.task.yaml";
+
+    const resolved = await resolveSuite(suite, {
+      projectRoot: "/project",
+      realpath: async (path) => path,
+      expandInclude: async () => [matrixPath],
+      loadTask: async () => loadedTask(basePath, concreteTask("base-task")),
+      loadMatrix: async () => ({
+        path: matrixPath,
+        source: "",
+        document: {
+          format_version: "1.0",
+          task: "./base.task.yaml",
+          axes: { x: ["a", "b"] }
+        }
+      })
+    });
+
+    expect(resolved.tasks.map((task) => task.document["id"])).toEqual([
+      "base-task[x=a]",
+      "base-task[x=b]"
+    ]);
+  });
+
+  it.each([
+    ["absolute include", "/outside/task.task.yaml", async (path: string) => path],
+    ["lexical escape", "../../outside/task.task.yaml", async (path: string) => path],
+    ["symlink escape", "tasks/link.task.yaml", async (path: string) =>
+      path.endsWith("/tasks/link.task.yaml") ? "/outside/task.task.yaml" : path]
+  ] as const)("rejects %s before loading a matched task", async (_name, include, realpath) => {
+    const suite: LoadedYaml<SuiteDocument> = {
+      path: "/project/suites/core.suite.yaml",
+      source: "",
+      document: { ...suiteDocument, include: [include] }
+    };
+
+    await expect(resolveSuite(suite, {
+      projectRoot: "/project",
+      realpath,
+      expandInclude: async (_suitePath, entry) => [
+        entry.includes("link")
+          ? "/project/suites/tasks/link.task.yaml"
+          : "/outside/task.task.yaml"
+      ],
+      loadTask: async (path) => loadedTask(path, concreteTask("outside-task"))
+    })).rejects.toMatchObject({
+      category: "suite_invalid",
+      code: "suite_invalid/path-escape"
+    });
+  });
+
+  it("distinguishes unmatched direct includes from warning-only empty globs", async () => {
+    const direct: LoadedYaml<SuiteDocument> = {
+      path: "/project/core.suite.yaml",
+      source: "",
+      document: { ...suiteDocument, include: ["tasks/missing.task.yaml"] }
+    };
+    await expect(resolveSuite(direct, {
+      projectRoot: "/project",
+      realpath: async (path) => path,
+      expandInclude: async () => []
+    })).rejects.toMatchObject({ code: "suite_invalid/include-unmatched" });
+
+    const withGlob: LoadedYaml<SuiteDocument> = {
+      ...direct,
+      document: {
+        ...suiteDocument,
+        include: ["tasks/**/*.task.yaml", "tasks/present.task.yaml"]
+      }
+    };
+    const presentPath = "/project/tasks/present.task.yaml";
+    const resolved = await resolveSuite(withGlob, {
+      projectRoot: "/project",
+      realpath: async (path) => path,
+      expandInclude: async (_suitePath, include) =>
+        include.includes("*") ? [] : [presentPath],
+      loadTask: async () => loadedTask(presentPath, concreteTask("present-task"))
+    });
+
+    expect(resolved.warnings).toEqual([
+      {
+        code: "suite_warning/include-glob-unmatched",
+        include: "tasks/**/*.task.yaml",
+        message: "suite include glob matched no files: tasks/**/*.task.yaml"
+      }
+    ]);
+  });
 });
