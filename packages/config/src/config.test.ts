@@ -72,7 +72,7 @@ describe("Assay configuration schema and defaults", () => {
         defaultWallClockMs: 600_000
       },
       budgets: { suiteUsdCeilingMicros: null },
-      comparison: { threshold: 0, baseline: null },
+      comparison: { threshold: 50, baseline: null },
       viewer: { port: 0 },
       redaction: { rulesetVersion: "2026.08" },
       pricingCatalogVersion: "catalog-v1"
@@ -331,6 +331,33 @@ describe("CFG-002 fail-fast source-aware validation", () => {
         code: "invalid_configuration/env-unknown",
         source: "environment",
         key: "ASSAY_TYPO"
+      }
+    );
+  });
+
+  it("validates already-parsed CLI overrides before env and file inputs", () => {
+    expectConfigError(
+      () => resolveAssayConfig({
+        cli: { concurrency: 0 },
+        env: environmentFromRecord({ ASSAY_TYPO: "1" }),
+        file: file("not: [valid")
+      }),
+      {
+        code: "invalid_configuration/cli-value",
+        source: "CLI",
+        key: "concurrency"
+      }
+    );
+  });
+
+  it("requires a version marker whenever a configuration file exists", () => {
+    expectConfigError(
+      () => resolveAssayConfig({ file: file("concurrency: 3\n") }),
+      {
+        code: "invalid_configuration/file-schema",
+        source: "/work/assay.config.yaml",
+        key: "configVersion",
+        line: 1
       }
     );
   });
