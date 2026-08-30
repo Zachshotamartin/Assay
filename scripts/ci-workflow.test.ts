@@ -13,7 +13,7 @@ interface WorkflowStep {
 
 interface WorkflowJob {
   readonly name?: string;
-  readonly "runs-on"?: string;
+  readonly "runs-on"?: string | Readonly<Record<string, unknown>>;
   readonly steps?: readonly WorkflowStep[];
 }
 
@@ -74,5 +74,25 @@ describe("R0 CI workflow contract", () => {
         value.jobs?.[name]?.steps?.some(({ run }) => run === "npm run verify")
       ).toBe(true);
     }
+  });
+});
+
+describe("R1 CI workflow contract", () => {
+  it("adds named store-core and cross-platform e2e-simulated required checks", async () => {
+    const value = await workflow();
+
+    expect(value.jobs?.["store-core"]?.name).toBe("store-core");
+    expect(value.jobs?.["store-core"]?.["runs-on"]).toBe("ubuntu-24.04");
+    expect(value.jobs?.["e2e-simulated"]?.name).toBe("e2e-simulated");
+    expect(value.jobs?.["e2e-simulated"]?.["runs-on"]).toEqual({
+      matrix: { os: ["ubuntu-24.04", "macos-14"] }
+    });
+  });
+
+  it("enforces the golden semantic-review policy in CI", async () => {
+    const value = await workflow();
+    const steps = value.jobs?.["e2e-simulated"]?.steps ?? [];
+
+    expect(steps.some(({ run }) => run === "npm run check:goldens")).toBe(true);
   });
 });
