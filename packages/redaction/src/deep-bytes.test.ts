@@ -72,6 +72,11 @@ describe("strict UTF-8 and fail-closed behavior", () => {
     expect(output).toContain("[REDACTED:provider-openai:");
   });
 
+  it("preserves a UTF-8 byte-order mark in otherwise safe bytes", () => {
+    const input = new Uint8Array([0xef, 0xbb, 0xbf, 0x73, 0x61, 0x66, 0x65]);
+    expect(redactUtf8Bytes(input).value).toEqual(input);
+  });
+
   it("rejects malformed UTF-8 instead of passing bytes through", () => {
     const malformed = new Uint8Array([0xc3, 0x28]);
     expect(() => redactUtf8Bytes(malformed)).toThrowError(
@@ -83,6 +88,19 @@ describe("strict UTF-8 and fail-closed behavior", () => {
     expect(() => redactText("123456", { maxInputBytes: 5 })).toThrowError(
       expect.objectContaining({ category: "redaction_failed" })
     );
+  });
+
+  it("bounds byte records before decoding or invoking a detector", () => {
+    let detectorCalled = false;
+    expect(() =>
+      redactUtf8Bytes(new TextEncoder().encode("123456"), {
+        maxInputBytes: 5,
+        stageHook: () => {
+          detectorCalled = true;
+        }
+      })
+    ).toThrowError(expect.objectContaining({ category: "redaction_failed" }));
+    expect(detectorCalled).toBe(false);
   });
 
   it("converts detector failures to a stable redaction_failed error without leaking text", () => {

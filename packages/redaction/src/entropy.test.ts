@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { redactText, shannonEntropyBitsPerCharacter } from "./index.js";
 
 const BASE64_AT_THRESHOLD = "ABCDEFGHIJKLMNOPABCDEFGHIJKLMNOP";
+const BASE64_AT_MINIMUM_LENGTH = "ABCDEFGHIJKLMNOPQRST";
 const HEX_AT_THRESHOLD = "012345670123456701234567";
 const CONTENT_HASH = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
 
@@ -22,6 +23,9 @@ describe("entropy redaction", () => {
 
     expect(result.value).toBe(`[REDACTED:entropy:${BASE64_AT_THRESHOLD.length}]`);
     expect(result.manifest.matchCounts).toEqual({ entropy: 1 });
+    expect(redactText(BASE64_AT_MINIMUM_LENGTH).value).toBe(
+      `[REDACTED:entropy:${BASE64_AT_MINIMUM_LENGTH.length}]`
+    );
   });
 
   it("redacts hexadecimal candidates at 3.0 bits/char", () => {
@@ -41,6 +45,23 @@ describe("entropy redaction", () => {
     expect(redactText(CONTENT_HASH, { knownHashes }).value).toBe(CONTENT_HASH);
     expect(redactText(`${CONTENT_HASH}a`, { knownHashes }).value).toBe(
       `[REDACTED:entropy:${CONTENT_HASH.length + 1}]`
+    );
+  });
+
+  it("snapshots the injected native set before detector hooks can mutate it", () => {
+    const knownHashes = new Set([CONTENT_HASH]);
+    const result = redactText(CONTENT_HASH, {
+      knownHashes,
+      stageHook: () => knownHashes.clear()
+    });
+
+    expect(result.value).toBe(CONTENT_HASH);
+  });
+
+  it("rejects predicate objects that could exempt arbitrary entropy candidates", () => {
+    const forgedSet = { has: () => true } as unknown as ReadonlySet<string>;
+    expect(() => redactText(CONTENT_HASH, { knownHashes: forgedSet })).toThrowError(
+      expect.objectContaining({ category: "redaction_failed" })
     );
   });
 

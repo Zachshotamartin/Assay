@@ -48,6 +48,11 @@ describe("versioned pattern rules", () => {
     expectSinglePattern(`authorization=${ANTHROPIC_KEY}`, ANTHROPIC_KEY, "provider-anthropic");
   });
 
+  it("redacts the entire provider token when an allowed punctuation character ends it", () => {
+    const keyEndingInHyphen = `${OPENAI_KEY}-`;
+    expectSinglePattern(keyEndingInHyphen, keyEndingInHyphen, "provider-openai");
+  });
+
   it("redacts PEM private-key and certificate blocks", () => {
     const privateKey = [
       "-----BEGIN PRIVATE KEY-----",
@@ -62,6 +67,13 @@ describe("versioned pattern rules", () => {
 
     expectSinglePattern(privateKey, privateKey, "pem-private-key");
     expectSinglePattern(certificate, certificate, "pem-certificate");
+
+    const encryptedPrivateKey = [
+      "-----BEGIN ENCRYPTED PRIVATE KEY-----",
+      "SYNTHETICENCRYPTEDPRIVATEKEYBODY0123456789+/=",
+      "-----END ENCRYPTED PRIVATE KEY-----"
+    ].join("\n");
+    expectSinglePattern(encryptedPrivateKey, encryptedPrivateKey, "pem-private-key");
   });
 
   it("redacts a JWT only when its header is decodable JSON", () => {
@@ -77,6 +89,11 @@ describe("versioned pattern rules", () => {
     expectSinglePattern(`key_id=${AWS_ACCESS_KEY_ID}`, AWS_ACCESS_KEY_ID, "aws-access-key-id");
     expectSinglePattern(
       `AWS_SECRET_ACCESS_KEY=${AWS_SECRET}`,
+      AWS_SECRET,
+      "aws-secret-access-key"
+    );
+    expectSinglePattern(
+      `{"aws_secret_access_key":"${AWS_SECRET}"}`,
       AWS_SECRET,
       "aws-secret-access-key"
     );
