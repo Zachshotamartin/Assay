@@ -66,6 +66,42 @@ describe("deep JSON redaction", () => {
     expect(result.value).toEqual({ first: hash, second: hash });
   });
 
+  it("redacts structured AWS and GCP credential fields using their object-key context", () => {
+    const awsSecret = "A".repeat(40);
+    const privateKeyId = "a".repeat(40);
+    const result = redactJsonDeep({
+      SecretAccessKey: awsSecret,
+      type: "service_account",
+      client_secret: "plain-secret",
+      private_key_id: privateKeyId
+    });
+
+    expect(result.value).toEqual({
+      SecretAccessKey: "[REDACTED:aws-secret-access-key:40]",
+      type: "[REDACTED:gcp-service-account:15]",
+      client_secret: "[REDACTED:gcp-client-secret:12]",
+      private_key_id: "[REDACTED:gcp-private-key-id:40]"
+    });
+    expect(result.manifest.matchCounts).toEqual({
+      "aws-secret-access-key": 1,
+      "gcp-client-secret": 1,
+      "gcp-private-key-id": 1,
+      "gcp-service-account": 1
+    });
+  });
+
+  it("fails closed before a secret-bearing base location can enter a manifest", () => {
+    let thrown: unknown;
+    try {
+      redactText("safe", { location: `/${OPENAI_KEY}` });
+    } catch (error) {
+      thrown = error;
+    }
+
+    expect(thrown).toEqual(expect.objectContaining({ category: "redaction_failed" }));
+    expect(JSON.stringify(thrown)).not.toContain(OPENAI_KEY);
+  });
+
   it.each([
     undefined,
     1n,
