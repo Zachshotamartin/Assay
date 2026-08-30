@@ -1,6 +1,6 @@
-import { chmod, mkdtemp, readdir, stat, writeFile } from "node:fs/promises";
+import { chmod, mkdtemp, readdir, stat, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { basename, join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 
 import {
@@ -187,6 +187,25 @@ describe("R1.12 store core", () => {
     expect((await stat(join(projectRoot, "state", "private-store"))).mode & 0o777).toBe(0o700);
 
     await store.close();
+  });
+
+  it("rejects absolute, traversal, and symlinked store paths before creating outside state", async () => {
+    const projectRoot = await temporaryProject();
+    const outsideRoot = await temporaryProject();
+    const outsideStore = join(outsideRoot, "assay-state");
+
+    await expect(openRunStore(storeOptions(projectRoot, {
+      storePath: outsideStore
+    }))).rejects.toMatchObject({ category: "invalid_configuration" });
+    await expect(openRunStore(storeOptions(projectRoot, {
+      storePath: join("..", basename(outsideRoot), "assay-state")
+    }))).rejects.toMatchObject({ category: "invalid_configuration" });
+
+    await symlink(outsideRoot, join(projectRoot, "linked-parent"), "dir");
+    await expect(openRunStore(storeOptions(projectRoot, {
+      storePath: "linked-parent/assay-state"
+    }))).rejects.toMatchObject({ category: "invalid_configuration" });
+    await expect(stat(outsideStore)).rejects.toMatchObject({ code: "ENOENT" });
   });
 
   it("STO-001 atomically appends canonical run, task-run, and event records", async () => {
