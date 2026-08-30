@@ -27,8 +27,8 @@ const MAX_REGEX_LENGTH = 4_096;
 export class AssertionSpecError extends AssayError {
   readonly code: string;
 
-  constructor(code: string, message: string) {
-    super("task_invalid", message);
+  constructor(code: string, message: string, cause?: unknown) {
+    super("task_invalid", message, cause === undefined ? {} : { cause });
     this.name = "AssertionSpecError";
     this.code = `task_invalid/${code}`;
   }

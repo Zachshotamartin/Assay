@@ -1,6 +1,6 @@
 import { resolve, posix } from "node:path";
 
-import { Ajv2020, type ErrorObject } from "ajv/dist/2020.js";
+import { Ajv2020, type ErrorObject, type ValidateFunction } from "ajv/dist/2020.js";
 
 import { evaluateDiffMatches } from "./diff-matches.js";
 import type {
@@ -12,6 +12,7 @@ import type {
   FileContainsAssertionSpec
 } from "./types.js";
 import {
+  AssertionSpecError,
   validateDeterministicAssertion,
   validateSafeRegex
 } from "./validation.js";
@@ -323,8 +324,23 @@ async function evaluateJsonSchema(
   } catch {
     return { observed: "invalid JSON", expectation, verdict: "fail" };
   }
+  const validator = await compileJsonSchema(spec, context.projectRoot);
+  if (validator(target)) {
+    return { observed: "conformant", expectation, verdict: "pass" };
+  }
+  return {
+    observed: stableAjvErrors(validator.errors ?? []),
+    expectation,
+    verdict: "fail"
+  };
+}
+
+async function compileJsonSchema(
+  spec: Extract<DeterministicAssertionSpec, { readonly type: "json_schema" }>,
+  projectRoot: string
+): Promise<ValidateFunction<unknown>> {
   const schemaBytes = await readWorkspaceFile(
-    context.projectRoot,
+    projectRoot,
     spec.schema,
     DEFAULT_JSON_FILE_MAX_BYTES
   );
@@ -338,15 +354,29 @@ async function evaluateJsonSchema(
     throw new Error(`JSON Schema contains a remote $ref: ${spec.schema}`);
   }
   const ajv = new Ajv2020({ strict: true, allErrors: true, validateFormats: false });
-  const validator = ajv.compile(schema as object);
-  if (validator(target)) {
-    return { observed: "conformant", expectation, verdict: "pass" };
+  return ajv.compile(schema as object) as ValidateFunction<unknown>;
+}
+
+export async function validateJsonSchemaAssertion(
+  uncheckedSpec: unknown,
+  projectRoot: string
+): Promise<void> {
+  validateDeterministicAssertion(uncheckedSpec);
+  if (uncheckedSpec.type !== "json_schema") {
+    throw new AssertionSpecError(
+      "json-schema",
+      "task_invalid: JSON Schema preflight requires a json_schema assertion"
+    );
   }
-  return {
-    observed: stableAjvErrors(validator.errors ?? []),
-    expectation,
-    verdict: "fail"
-  };
+  try {
+    await compileJsonSchema(uncheckedSpec, projectRoot);
+  } catch (cause) {
+    throw new AssertionSpecError(
+      "json-schema",
+      `task_invalid: JSON Schema preflight failed for ${uncheckedSpec.schema}`,
+      cause
+    );
+  }
 }
 
 function stripOneTrailingNewline(text: string): string {
