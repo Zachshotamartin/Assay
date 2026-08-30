@@ -159,7 +159,7 @@ jobs:
     timeout-minutes: 15
     env:
       GOLDEN_POLICY_BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
-      GOLDEN_POLICY_PR_BODY: ${{ github.event.pull_request.body || '' }}
+      GOLDEN_POLICY_REVIEW_TEXT: ${{ github.event.pull_request.body || github.event.head_commit.message || '' }}
     steps:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1

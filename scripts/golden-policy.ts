@@ -88,7 +88,7 @@ function main(): void {
     throw new Error("usage: golden-policy check");
   }
   const files = changedFilesFromGit();
-  assertGoldenReview(files, process.env["GOLDEN_POLICY_PR_BODY"] ?? "");
+  assertGoldenReview(files, process.env["GOLDEN_POLICY_REVIEW_TEXT"] ?? "");
   process.stdout.write(`golden review policy: ok (${changedGoldenFiles(files).length} changed)\n`);
 }
 
