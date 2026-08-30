@@ -20,6 +20,14 @@ async function fixtures(): Promise<readonly { readonly file: string; readonly so
   );
 }
 
+async function firstFixtureSource(): Promise<string> {
+  const first = (await fixtures())[0];
+  if (first === undefined) {
+    throw new Error("event fixtures are missing");
+  }
+  return first.source;
+}
+
 describe("AssayEvent v1", () => {
   it("has exactly one accepting fixture for every fixed event name", async () => {
     const loaded = await fixtures();
@@ -46,7 +54,7 @@ describe("AssayEvent v1", () => {
   });
 
   it("rejects unknown event types, versions, fields, and invalid timestamps", async () => {
-    const [{ source }] = await fixtures();
+    const source = await firstFixtureSource();
     const event = JSON.parse(source) as Record<string, unknown>;
 
     expect(() => parseAssayEvent(JSON.stringify({ ...event, type: "UnknownEvent" }))).toThrowError(
@@ -64,10 +72,10 @@ describe("AssayEvent v1", () => {
   });
 
   it("rejects malformed JSON, invalid UTF-8, and oversized payloads", async () => {
-    const [{ source }] = await fixtures();
+    const source = await firstFixtureSource();
     const event = JSON.parse(source) as Record<string, unknown>;
 
-    expect(() => parseAssayEvent("{")) .toThrowError(/adapter_protocol_error/u);
+    expect(() => parseAssayEvent("{")).toThrowError(/adapter_protocol_error/u);
     expect(() => parseAssayEvent(Uint8Array.from([0xc3, 0x28]))).toThrowError(
       /adapter_protocol_error/u
     );
@@ -79,9 +87,8 @@ describe("AssayEvent v1", () => {
   });
 
   it("returns the discriminated public union", async () => {
-    const [{ source }] = await fixtures();
+    const source = await firstFixtureSource();
     const event: AssayEvent = parseAssayEvent(source);
     expect(ASSAY_EVENT_TYPES).toContain(event.type);
   });
 });
-
