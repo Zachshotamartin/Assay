@@ -74,7 +74,7 @@ const EXIT_CODE_BY_CATEGORY = {
   provider_rate_limit: 5,
   provider_transient: 5,
   provider_invalid_response: 5,
-  usage_unreconciled: 2,
+  usage_unreconciled: 5,
   assertion_error: 5,
   judge_unavailable: 5,
   judge_uncalibrated: 4,
@@ -93,11 +93,7 @@ export function exitCodeForCategory(category: AssayErrorCategory): ExitCode {
 }
 
 export function aggregateExitCode(codes: readonly ExitCode[]): ExitCode {
-  if (codes.includes(6)) {
-    return 6;
-  }
-
-  for (const candidate of [5, 4, 3, 2, 1] as const) {
+  for (const candidate of [5, 6, 3, 2, 1, 4] as const) {
     if (codes.includes(candidate)) {
       return candidate;
     }
