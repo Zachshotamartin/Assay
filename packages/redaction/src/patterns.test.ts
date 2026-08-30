@@ -43,6 +43,10 @@ function expectSinglePattern(
 }
 
 describe("versioned pattern rules", () => {
+  it("uses the architecture and configuration ruleset version", () => {
+    expect(REDACTION_RULESET_VERSION).toBe("2026.08");
+  });
+
   it("redacts OpenAI and Anthropic provider-key shapes", () => {
     expectSinglePattern(`authorization=${OPENAI_KEY}`, OPENAI_KEY, "provider-openai");
     expectSinglePattern(`authorization=${ANTHROPIC_KEY}`, ANTHROPIC_KEY, "provider-anthropic");
