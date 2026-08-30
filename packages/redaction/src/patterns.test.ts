@@ -11,7 +11,7 @@ const utf8Length = (value: string): number => new TextEncoder().encode(value).by
 const OPENAI_KEY = "sk-proj-SYNTHETIC0123456789abcdefghijklmnopqrstuv";
 const ANTHROPIC_KEY = "sk-ant-api03-SYNTHETIC0123456789abcdefghijklmnop";
 const AWS_ACCESS_KEY_ID = ["AKIA", "ABCDEFGHIJKLMNOP"].join("");
-const AWS_SECRET = "AbCdEfGhIjKlMnOpQrStUvWxYz0123456789+/=";
+const AWS_SECRET = ["AbCdEfGhIjKlMnOpQrSt", "UvWxYz0123456789+/XY"].join("");
 const GCP_PRIVATE_KEY_ID = "0123456789abcdef0123456789abcdef01234567";
 const AZURE_ACCOUNT_KEY = "QWxwaGFCcmF2b0NoYXJsaWVEZWx0YUVjaG9Gb3h0cm90MTIzNDU2Nzg5MA==";
 const JWT =
