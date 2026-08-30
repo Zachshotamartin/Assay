@@ -10,7 +10,8 @@ export type ArchitectureViolationCode =
   | "imports-app"
   | "workspace-deep-import"
   | "undeclared-workspace-dependency"
-  | "checker-worker-import";
+  | "checker-worker-import"
+  | "nondeterministic-source";
 
 export interface ArchitectureViolation {
   readonly code: ArchitectureViolationCode;
@@ -41,7 +42,21 @@ interface ImportSite {
   readonly position: number;
 }
 
+type NondeterministicSource = "Date.now" | "Math.random" | "crypto.randomUUID" | "setTimeout";
+
 const SOURCE_SUFFIXES = [".ts", ".tsx", ".mts", ".cts"] as const;
+const NONDETERMINISTIC_SOURCE_ALLOWLIST: Readonly<Record<NondeterministicSource, ReadonlySet<string>>> = {
+  "Date.now": new Set(["apps/cli/src/runtime.ts"]),
+  "Math.random": new Set(),
+  "crypto.randomUUID": new Set(),
+  setTimeout: new Set([
+    "packages/adapter-core/src/supervisor.ts",
+    "packages/adapter-simulated/src/scenario.ts",
+    "packages/assertions/src/command-runner.ts",
+    "packages/run-store/src/lock.ts",
+    "packages/run-store/src/store.ts"
+  ])
+};
 
 function slash(value: string): string {
   return value.split(sep).join("/");
@@ -174,6 +189,45 @@ function importSites(sourceFile: ts.SourceFile): readonly ImportSite[] {
   return sites;
 }
 
+function expressionPath(expression: ts.Expression): string | undefined {
+  if (ts.isIdentifier(expression)) {
+    return expression.text;
+  }
+  if (ts.isPropertyAccessExpression(expression)) {
+    const parent = expressionPath(expression.expression);
+    return parent === undefined ? expression.name.text : `${parent}.${expression.name.text}`;
+  }
+  return undefined;
+}
+
+function canonicalNondeterministicSource(path: string): NondeterministicSource | undefined {
+  if (path === "Date.now" || path.endsWith(".Date.now")) return "Date.now";
+  if (path === "Math.random" || path.endsWith(".Math.random")) return "Math.random";
+  if (path === "randomUUID" || path.endsWith(".randomUUID")) return "crypto.randomUUID";
+  if (path === "setTimeout" || path.endsWith(".setTimeout")) return "setTimeout";
+  return undefined;
+}
+
+function nondeterministicSites(sourceFile: ts.SourceFile): readonly ImportSite[] {
+  const sites: ImportSite[] = [];
+  function visit(node: ts.Node): void {
+    if (ts.isCallExpression(node)) {
+      const path = expressionPath(node.expression);
+      const source = path === undefined ? undefined : canonicalNondeterministicSource(path);
+      if (source !== undefined) {
+        sites.push({ specifier: source, position: node.expression.getStart(sourceFile) });
+      }
+    }
+    ts.forEachChild(node, visit);
+  }
+  visit(sourceFile);
+  return sites;
+}
+
+function isTestSource(repositoryPath: string): boolean {
+  return /(?:^|\/)[^/]+\.(?:e2e\.|property\.)?test\.[cm]?[jt]sx?$/u.test(repositoryPath);
+}
+
 function containsPath(parent: string, candidate: string): boolean {
   const path = relative(parent, candidate);
   return path === "" || (!path.startsWith(`..${sep}`) && path !== ".." && !isAbsolute(path));
@@ -239,6 +293,24 @@ export async function inspectArchitecture(rootDir: string): Promise<readonly Arc
       const source = await readFile(file, "utf8");
       const sourceFile = ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true);
       const repositoryPath = slash(relative(absoluteRoot, file));
+      if (!isTestSource(repositoryPath)) {
+        for (const site of nondeterministicSites(sourceFile)) {
+          const primitive = site.specifier as NondeterministicSource;
+          if (NONDETERMINISTIC_SOURCE_ALLOWLIST[primitive].has(repositoryPath)) {
+            continue;
+          }
+          const location = sourceFile.getLineAndCharacterOfPosition(site.position);
+          violations.push({
+            code: "nondeterministic-source",
+            file: repositoryPath,
+            line: location.line + 1,
+            column: location.character + 1,
+            importer: importer.path,
+            imported: "injected clocks, IDs, randomness, or schedulers",
+            specifier: primitive
+          });
+        }
+      }
       for (const site of importSites(sourceFile)) {
         if (
           repositoryPath === "packages/assertions/src/checker-worker-entry.ts" &&
@@ -288,6 +360,9 @@ export async function inspectArchitecture(rootDir: string): Promise<readonly Arc
 }
 
 export function formatArchitectureViolation(violation: ArchitectureViolation): string {
+  if (violation.code === "nondeterministic-source") {
+    return `${violation.file}:${violation.line}:${violation.column} architecture[${violation.code}]: ${violation.specifier} is allowed only in its composition-root or platform implementation`;
+  }
   return `${violation.file}:${violation.line}:${violation.column} architecture[${violation.code}]: ${violation.importer} may not import ${violation.imported} via ${JSON.stringify(violation.specifier)}`;
 }
 
