@@ -3,7 +3,7 @@ import { readdir, rm } from "node:fs/promises";
 const workspaceParents = [
   new URL("../apps/", import.meta.url),
   new URL("../packages/", import.meta.url)
-] as const;
+];
 
 const generatedDirectories = [new URL("../dist/scripts/", import.meta.url)];
 for (const parent of workspaceParents) {
