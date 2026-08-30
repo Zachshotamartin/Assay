@@ -1,0 +1,1 @@
+{"scenario_version":1,"steps":[{"emit":{"type":"session_started","sessionId":"sim-session"}},{"emit":{"type":"run_failed","category":"provider_error","message":"Scripted provider error."}}]}

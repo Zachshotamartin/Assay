@@ -1,0 +1,285 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://assay.dev/schemas/adapter-simulated/scenario.v1.schema.json",
+  "title": "Assay deterministic simulated-adapter scenario v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["scenario_version", "steps"],
+  "properties": {
+    "scenario_version": { "const": 1 },
+    "steps": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/step" }
+    }
+  },
+  "$defs": {
+    "model": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["provider", "model", "family"],
+      "properties": {
+        "provider": { "type": "string" },
+        "model": { "type": "string" },
+        "family": { "type": "string" }
+      }
+    },
+    "truncationProperties": {
+      "type": "object",
+      "properties": {
+        "truncated": { "const": true },
+        "originalSha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+      },
+      "dependentRequired": {
+        "truncated": ["originalSha256"],
+        "originalSha256": ["truncated"]
+      }
+    },
+    "emit": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "sessionId"],
+          "properties": {
+            "type": { "const": "session_started" },
+            "sessionId": { "type": "string" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "type", "requestId", "turn", "model", "messageCount", "inputSummarySha256"
+          ],
+          "properties": {
+            "type": { "const": "model_request" },
+            "requestId": { "type": "string" },
+            "turn": { "type": "integer", "minimum": 0 },
+            "model": { "$ref": "#/$defs/model" },
+            "messageCount": { "type": "integer", "minimum": 0 },
+            "inputSummarySha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+          }
+        },
+        {
+          "allOf": [
+            { "$ref": "#/$defs/truncationProperties" },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["type", "requestId", "status", "stopReason", "latencyMs", "text"],
+              "properties": {
+                "type": { "const": "model_response" },
+                "requestId": { "type": "string" },
+                "status": { "enum": ["ok", "provider_error", "timeout"] },
+                "stopReason": {
+                  "oneOf": [
+                    { "enum": ["end_turn", "tool_use", "max_tokens", "refusal", "other"] },
+                    { "type": "null" }
+                  ]
+                },
+                "latencyMs": { "type": "integer", "minimum": 0 },
+                "text": {
+                  "oneOf": [
+                    { "type": "string" },
+                    { "type": "null" }
+                  ]
+                },
+                "truncated": { "const": true },
+                "originalSha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+              }
+            }
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "callId", "requestId", "tool", "args"],
+          "properties": {
+            "type": { "const": "tool_call" },
+            "callId": { "type": "string" },
+            "requestId": { "type": "string" },
+            "tool": { "type": "string" },
+            "args": { "type": "object" }
+          }
+        },
+        {
+          "allOf": [
+            { "$ref": "#/$defs/truncationProperties" },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["type", "callId", "status", "result", "durationMs"],
+              "properties": {
+                "type": { "const": "tool_result" },
+                "callId": { "type": "string" },
+                "status": { "enum": ["ok", "error", "timeout"] },
+                "result": { "type": "string" },
+                "durationMs": { "type": "integer", "minimum": 0 },
+                "truncated": { "const": true },
+                "originalSha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+              }
+            }
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "usage"],
+          "properties": {
+            "type": { "const": "usage" },
+            "usage": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "requestId", "promptTokens", "completionTokens", "totalTokens",
+                "costUsdMicros", "source"
+              ],
+              "properties": {
+                "requestId": { "type": "string" },
+                "promptTokens": { "type": "integer", "minimum": 0 },
+                "completionTokens": { "type": "integer", "minimum": 0 },
+                "totalTokens": { "type": "integer", "minimum": 0 },
+                "costUsdMicros": { "const": 0 },
+                "source": { "const": "synthetic" }
+              }
+            }
+          }
+        },
+        {
+          "allOf": [
+            { "$ref": "#/$defs/truncationProperties" },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["type", "text"],
+              "properties": {
+                "type": { "const": "text_output" },
+                "text": { "type": "string" },
+                "truncated": { "const": true },
+                "originalSha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+              }
+            }
+          ]
+        },
+        {
+          "allOf": [
+            { "$ref": "#/$defs/truncationProperties" },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["type", "summary"],
+              "properties": {
+                "type": { "const": "run_completed" },
+                "summary": { "type": "string" },
+                "truncated": { "const": true },
+                "originalSha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+              }
+            }
+          ]
+        },
+        {
+          "allOf": [
+            { "$ref": "#/$defs/truncationProperties" },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["type", "category", "message"],
+              "properties": {
+                "type": { "const": "run_failed" },
+                "category": {
+                  "enum": ["agent_gave_up", "agent_crashed", "provider_error", "internal"]
+                },
+                "message": { "type": "string" },
+                "truncated": { "const": true },
+                "originalSha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+              }
+            }
+          ]
+        },
+        {
+          "allOf": [
+            { "$ref": "#/$defs/truncationProperties" },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["type", "level", "message"],
+              "properties": {
+                "type": { "const": "log" },
+                "level": { "enum": ["debug", "info", "warn", "error"] },
+                "message": { "type": "string" },
+                "truncated": { "const": true },
+                "originalSha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "step": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["emit"],
+          "properties": { "emit": { "$ref": "#/$defs/emit" } }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["sleep_ms"],
+          "properties": {
+            "sleep_ms": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["write_file"],
+          "properties": {
+            "write_file": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["path", "contents"],
+              "properties": {
+                "path": { "type": "string", "minLength": 1 },
+                "contents": { "type": "string" }
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["delete_file"],
+          "properties": {
+            "delete_file": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["path"],
+              "properties": { "path": { "type": "string", "minLength": 1 } }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["misbehave"],
+          "properties": {
+            "misbehave": {
+              "enum": [
+                "malformed_json", "garbage_stdout", "invalid_utf8", "oversized_frame",
+                "sequence_gap", "post_terminal_frame", "missing_tool_result",
+                "usage_arithmetic_error", "exit_zero_without_terminal", "crash_at_step",
+                "early_exit", "frame_flood", "hang_until_timeout", "ignore_sigterm"
+              ]
+            }
+          }
+        }
+      ]
+    }
+  }
+}

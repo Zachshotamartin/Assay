@@ -10,6 +10,10 @@ import {
 import { afterEach, describe, expect, it } from "vitest";
 
 import {
+  resolveSimulatedScenarioPath,
+  simulatedAdapterCommand
+} from "./command.js";
+import {
   executeSimulatedScenario,
   parseSimulatedScenarioJson,
   type SimulatedAction,
@@ -62,6 +66,16 @@ afterEach(async () => {
 });
 
 describe("strict simulated scenario schema", () => {
+  it("exposes a cwd-independent command for the shipped happy scenario", async () => {
+    const scenarioPath = resolveSimulatedScenarioPath();
+    expect(parseSimulatedScenarioJson(await readFile(scenarioPath, "utf8"))).toMatchObject({
+      scenario_version: 1
+    });
+    const command = simulatedAdapterCommand();
+    expect(command[0]).toBe(process.execPath);
+    expect(command.at(-1)).toBe(scenarioPath);
+  });
+
   it("accepts every shipped strict JSON fixture with numeric scenario_version 1", async () => {
     for (const name of [
       "happy-multi-turn.json", "filesystem.json", "malformed-json.json",
@@ -69,7 +83,11 @@ describe("strict simulated scenario schema", () => {
       "sequence-gap.json", "post-terminal-frame.json", "missing-tool-result.json",
       "usage-arithmetic-error.json", "exit-zero-without-terminal.json",
       "crash-at-step.json", "early-exit.json", "frame-flood.json",
-      "hang-until-timeout.json", "ignore-sigterm.json"
+      "hang-until-timeout.json", "ignore-sigterm.json", "plain-text.json",
+      "tool-error-recovery.json", "identical-call-loop.json",
+      "budget-token-ramp.json", "run-failed-agent-gave-up.json",
+      "run-failed-agent-crashed.json", "run-failed-provider-error.json",
+      "run-failed-internal.json"
     ]) {
       expect(parseSimulatedScenarioJson(await scenarioFixture(name))).toMatchObject({
         scenario_version: 1,
@@ -141,6 +159,61 @@ describe("deterministic scenario execution", () => {
       await expect(collect(executeSimulatedScenario(invalid, { ...SPEC, workspacePath: workspace }, {
         clock: new FixedClock()
       }))).rejects.toThrow(/workspace/u);
+    }
+  });
+
+  it("ships tool recovery, loop, token-ramp, and every run_failed fixture", async () => {
+    const recovery = await collect(executeSimulatedScenario(
+      parseSimulatedScenarioJson(await scenarioFixture("tool-error-recovery.json")),
+      SPEC,
+      { clock: new FixedClock() }
+    ));
+    const recoveryEvents = recovery
+      .filter((action) => action.kind === "stdout")
+      .map((action) => parseAdapterEventFrame(new TextDecoder().decode(action.bytes).slice(0, -1)));
+    expect(recoveryEvents).toContainEqual(expect.objectContaining({
+      type: "tool_result",
+      status: "error"
+    }));
+    expect(recoveryEvents.at(-1)?.type).toBe("run_completed");
+
+    const loop = await collect(executeSimulatedScenario(
+      parseSimulatedScenarioJson(await scenarioFixture("identical-call-loop.json")),
+      SPEC,
+      { clock: new FixedClock() }
+    ));
+    const loopCalls = loop
+      .filter((action) => action.kind === "stdout")
+      .map((action) => parseAdapterEventFrame(new TextDecoder().decode(action.bytes).slice(0, -1)))
+      .filter((event) => event.type === "tool_call");
+    expect(loopCalls).toHaveLength(2);
+    expect(loopCalls[0]?.args).toEqual(loopCalls[1]?.args);
+    expect(loopCalls[0]?.callId).not.toBe(loopCalls[1]?.callId);
+
+    const ramp = await collect(executeSimulatedScenario(
+      parseSimulatedScenarioJson(await scenarioFixture("budget-token-ramp.json")),
+      SPEC,
+      { clock: new FixedClock() }
+    ));
+    expect(ramp
+      .filter((action) => action.kind === "stdout")
+      .map((action) => parseAdapterEventFrame(new TextDecoder().decode(action.bytes).slice(0, -1)))
+      .filter((event) => event.type === "usage")
+      .map((event) => event.usage.totalTokens)).toEqual([10, 20, 40]);
+
+    for (const category of ["agent_gave_up", "agent_crashed", "provider_error", "internal"] as const) {
+      const scenario = parseSimulatedScenarioJson(
+        await scenarioFixture(`run-failed-${category.replaceAll("_", "-")}.json`)
+      );
+      const actions = await collect(executeSimulatedScenario(scenario, SPEC, {
+        clock: new FixedClock()
+      }));
+      const last = actions.at(-1);
+      expect(last?.kind).toBe("stdout");
+      if (last?.kind === "stdout") {
+        expect(parseAdapterEventFrame(new TextDecoder().decode(last.bytes).slice(0, -1)))
+          .toMatchObject({ type: "run_failed", category });
+      }
     }
   });
 });

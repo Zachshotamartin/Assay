@@ -290,7 +290,7 @@ A scenario is strict JSON, never YAML, with numeric scenario_version 1:
 {
   "scenario_version": 1,
   "steps": [
-    {"emit":{"type":"session_started","session_id":"sim-session"}},
+    {"emit":{"type":"session_started","sessionId":"sim-session"}},
     {"emit":{"type":"text_output","text":"Done."}},
     {"emit":{"type":"run_completed","summary":"Completed scripted run."}}
   ]
@@ -303,6 +303,12 @@ injected clock. Directives are sleep_ms, write_file with path and contents,
 delete_file with path, and misbehave. File directives are confined to the
 run-spec workspace. Identical scenario, seed, and clock inputs produce
 byte-identical output.
+
+The package exports `simulatedAdapterCommand()`, whose no-argument form
+invokes the shipped `happy-multi-turn` scenario without consulting the
+current working directory. Runner composition uses that default; the task
+format does not expose a scenario-selection field. Conformance tests may pass
+an explicit repository fixture path through the command helper.
 
 Misbehavior scenarios cover malformed JSON, invalid UTF-8, oversized frames,
 sequence gaps, frame floods, post-terminal frames, missing tool results,

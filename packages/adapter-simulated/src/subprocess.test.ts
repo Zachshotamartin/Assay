@@ -1,5 +1,4 @@
 import { mkdtemp, readFile, rm } from "node:fs/promises";
-import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
 import { join } from "node:path";
@@ -14,9 +13,9 @@ import {
 } from "@assay/adapter-core";
 import { afterEach, describe, expect, it } from "vitest";
 
+import { simulatedAdapterCommand } from "./command.js";
+
 const fixtureRoot = new URL("../../../fixtures/trajectories/", import.meta.url);
-const binPath = fileURLToPath(new URL("./bin.ts", import.meta.url));
-const tsxImport = createRequire(import.meta.url).resolve("tsx");
 const tempPaths: string[] = [];
 
 const REDACTOR: AdapterCaptureRedactor = {
@@ -56,13 +55,9 @@ async function runFixture(
     budgets_advisory: {}
   }));
   return superviseAdapter({
-    command: [
-      process.execPath,
-      "--import",
-      tsxImport,
-      binPath,
-      fileURLToPath(new URL(name, fixtureRoot))
-    ],
+    command: simulatedAdapterCommand({
+      scenarioPath: fileURLToPath(new URL(name, fixtureRoot))
+    }),
     spec,
     cwd: workspace,
     env: { LANG: "C.UTF-8", LC_ALL: "C.UTF-8" },
@@ -99,6 +94,22 @@ describe("simulated adapter subprocess", () => {
   });
 
   it.each([
+    ["run-failed-agent-gave-up.json", "agent_gave_up"],
+    ["run-failed-agent-crashed.json", "agent_crashed"],
+    ["run-failed-provider-error.json", "provider_error"],
+    ["run-failed-internal.json", "internal"]
+  ] as const)("preserves %s as a clean run_failed terminal", async (name, category) => {
+    const result = await runFixture(name);
+    expect(result).toMatchObject({
+      status: "failed",
+      errorCategory: null,
+      incomplete: false,
+      exit: { code: 0, signal: null }
+    });
+    expect(result.events.at(-1)).toMatchObject({ type: "run_failed", category });
+  });
+
+  it.each([
     ["malformed-json.json", "completed", null, "invalid_json"],
     ["garbage-stdout.json", "completed", null, "invalid_json"],
     ["invalid-utf8.json", "completed", null, "invalid_utf8"],
@@ -115,7 +126,7 @@ describe("simulated adapter subprocess", () => {
     const result = await runFixture(name, 8_000);
     expect(result.status).toBe(status);
     expect(result.errorCategory).toBe(category);
-    if (status === "completed" && name !== "happy-multi-turn.json") {
+    if (status === "completed") {
       expect(result.incomplete).toBe(true);
     }
     if (diagnostic !== null) {

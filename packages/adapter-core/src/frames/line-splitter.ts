@@ -31,6 +31,7 @@ export type AdapterLineRecord =
 const LF = 0x0a;
 const CR = 0x0d;
 const BOM = [0xef, 0xbb, 0xbf] as const;
+const textEncoder = new TextEncoder();
 
 function copyBytes(source: Uint8Array): Uint8Array<ArrayBuffer> {
   const copy = new Uint8Array(source.byteLength);
@@ -245,10 +246,41 @@ export class BoundedHeadTailBuffer {
   }
 
   snapshot(): HeadTailSnapshot {
-    const bytes = this.#overflowed ? concatBytes(this.#head, this.#tail) : copyBytes(this.#initial);
+    if (!this.#overflowed) {
+      const bytes = copyBytes(this.#initial);
+      return { bytes, droppedBytes: 0 };
+    }
+
+    let droppedBytes = Math.max(0, this.#totalBytes - this.#limit);
+    let marker = textEncoder.encode(`...[${droppedBytes} bytes elided]...`);
+    if (marker.byteLength > this.#limit) {
+      const bytes = concatBytes(this.#head, this.#tail);
+      return {
+        bytes,
+        droppedBytes: Math.max(0, this.#totalBytes - bytes.byteLength)
+      };
+    }
+
+    // The marker itself consumes capture space. Its decimal byte count can
+    // change the marker width, so converge before selecting the retained data.
+    for (;;) {
+      const retainedBytes = this.#limit - marker.byteLength;
+      const nextDroppedBytes = Math.max(0, this.#totalBytes - retainedBytes);
+      const nextMarker = textEncoder.encode(`...[${nextDroppedBytes} bytes elided]...`);
+      if (nextDroppedBytes === droppedBytes && nextMarker.byteLength === marker.byteLength) break;
+      droppedBytes = nextDroppedBytes;
+      marker = nextMarker;
+    }
+
+    const retainedBytes = this.#limit - marker.byteLength;
+    const headBytes = Math.floor(retainedBytes / 2);
+    const tailBytes = retainedBytes - headBytes;
+    const head = this.#head.subarray(0, headBytes);
+    const tail = this.#tail.subarray(Math.max(0, this.#tail.byteLength - tailBytes));
+    const bytes = concatBytes(concatBytes(head, marker), tail);
     return {
       bytes,
-      droppedBytes: Math.max(0, this.#totalBytes - bytes.byteLength)
+      droppedBytes
     };
   }
 

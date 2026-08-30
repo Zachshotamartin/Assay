@@ -4,6 +4,7 @@
     { "path": "scripts" },
     { "path": "packages/contracts" },
     { "path": "packages/adapter-core" },
+    { "path": "packages/adapter-simulated" },
     { "path": "packages/assertions" },
     { "path": "packages/run-store" },
     { "path": "packages/runner" },
