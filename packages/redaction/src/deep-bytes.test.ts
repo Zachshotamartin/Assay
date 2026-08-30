@@ -102,6 +102,14 @@ describe("deep JSON redaction", () => {
     expect(JSON.stringify(thrown)).not.toContain(OPENAI_KEY);
   });
 
+  it("does not classify a composed RFC 6901 path as one base64 token", () => {
+    const location = "/events/ABCDEFGHIJKLMNOP/QRSTUVWXYZ";
+    const result = redactText("safe", { location });
+
+    expect(result.value).toBe("safe");
+    expect(result.manifest.redactionCount).toBe(0);
+  });
+
   it.each([
     undefined,
     1n,
