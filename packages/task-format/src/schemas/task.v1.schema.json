@@ -63,7 +63,21 @@
           "fixture": { "$ref": "#/$defs/fixture" },
           "prompt": { "$ref": "#/$defs/prompt" },
           "toolset": { "$ref": "#/$defs/toolset" },
-          "sandbox": { "$ref": "#/$defs/sandbox" },
+          "sandbox": {
+            "allOf": [
+              { "$ref": "#/$defs/sandbox" },
+              {
+                "type": "object",
+                "properties": {
+                  "image": {
+                    "type": "string",
+                    "pattern": "^.+@sha256:[0-9a-f]{64}$"
+                  }
+                },
+                "required": ["image"]
+              }
+            ]
+          },
           "assertions": {
             "type": "array",
             "minItems": 1,
@@ -169,7 +183,6 @@
     "sandbox": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["image"],
       "properties": {
         "image": {
           "type": "string",

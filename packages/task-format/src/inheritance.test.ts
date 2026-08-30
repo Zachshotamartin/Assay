@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 import {
   TaskFormatError,
   resolveTaskInheritance,
+  validateTaskDocument,
   type LoadedYaml,
   type TaskDocument
 } from "./index.js";
@@ -72,6 +73,8 @@ describe("single-parent task inheritance", () => {
   it("applies every BUILD_PLAN merge rule field by field", async () => {
     const childPath = "/project/tasks/child.task.yaml";
     const parentPath = "/project/tasks/parent.task.yaml";
+    expect(validateTaskDocument(concreteChild)).toEqual({ ok: true });
+
     const result = await resolveTaskInheritance(loaded(childPath, concreteChild), {
       loadTask: fixtureLoader({ [parentPath]: abstractParent })
     });
@@ -127,7 +130,7 @@ describe("single-parent task inheritance", () => {
         title: "Self",
         extends: "./self.task.yaml"
       }
-    }],
+    }, ["/project/self.task.yaml", "/project/self.task.yaml"]],
     ["two-node", {
       "/project/a.task.yaml": {
         format_version: "1.0",
@@ -141,19 +144,23 @@ describe("single-parent task inheritance", () => {
         title: "B",
         extends: "./a.task.yaml"
       }
-    }]
-  ] as const)("rejects a %s cycle and names its traversal chain", async (_name, entries) => {
+    }, ["/project/a.task.yaml", "/project/b.task.yaml", "/project/a.task.yaml"]]
+  ] as const)("rejects a %s cycle and names its traversal chain", async (_name, entries, expectedChain) => {
     const firstPath = Object.keys(entries)[0] as string;
 
-    await expect(
-      resolveTaskInheritance(loaded(firstPath, entries[firstPath] as TaskDocument), {
+    try {
+      await resolveTaskInheritance(loaded(firstPath, entries[firstPath] as TaskDocument), {
         loadTask: fixtureLoader(entries)
-      })
-    ).rejects.toMatchObject({
-      category: "task_invalid",
-      code: "task_invalid/extends-cycle",
-      chain: expect.arrayContaining([firstPath])
-    });
+      });
+      throw new Error("expected cycle rejection");
+    } catch (error) {
+      expect(error).toMatchObject({
+        category: "task_invalid",
+        code: "task_invalid/extends-cycle",
+        chain: expectedChain
+      });
+      expect((error as Error).message).toContain(expectedChain.join(" -> "));
+    }
   });
 
   it("rejects inheritance deeper than eight files", async () => {
@@ -195,5 +202,22 @@ describe("single-parent task inheritance", () => {
     });
 
     expect(resolve("/project", "./missing.task.yaml")).toBe("/project/missing.task.yaml");
+  });
+
+  it("never inherits a concrete child's id or title", async () => {
+    const { title: _title, ...childWithoutTitle } = concreteChild;
+    await expect(
+      resolveTaskInheritance(loaded("/project/tasks/child.task.yaml", childWithoutTitle), {
+        loadTask: fixtureLoader({
+          "/project/tasks/parent.task.yaml": {
+            ...abstractParent,
+            title: "Parent title must not leak"
+          }
+        })
+      })
+    ).rejects.toMatchObject({
+      category: "task_invalid",
+      code: "task_invalid/inherited-identity"
+    });
   });
 });
