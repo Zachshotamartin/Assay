@@ -372,6 +372,9 @@ describe("R1.12 store core", () => {
     expect(performance.now() - started).toBeLessThan(500);
 
     await first.close();
+    const reopened = await openRunStore(storeOptions(projectRoot));
+    await reopened.close();
+    await reopened.close();
   });
 
   it("quarantines an unreadable database file instead of repairing or replacing it", async () => {

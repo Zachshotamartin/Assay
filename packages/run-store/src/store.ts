@@ -761,10 +761,22 @@ class SqliteRunStore implements RunStore {
     const reason = error.missing
       ? "referenced blob is missing"
       : "blob content hash does not match its address";
-    const quarantinePath = await this.#blobStore.quarantineCorruptObject(
-      error.blobHash,
-      timestampToken(this.#options.clock.wallTime())
-    );
+    let quarantinePath: string | null;
+    try {
+      quarantinePath = await this.#blobStore.quarantineCorruptObject(
+        error.blobHash,
+        timestampToken(this.#options.clock.wallTime())
+      );
+    } catch (cause) {
+      if (cause instanceof AssayError) {
+        throw cause;
+      }
+      throw new AssayError(
+        "storage_corrupt",
+        `storage_corrupt: corrupt blob ${error.blobHash} was detected but its bytes could not be moved into quarantine; no bytes were served and database references remain intact; inspect filesystem permissions with assay doctor`,
+        { cause }
+      );
+    }
     await this.#writeTransaction(() => {
       this.#insertQuarantine(
         "blob",
@@ -1207,12 +1219,17 @@ class SqliteRunStore implements RunStore {
     } catch (error) {
       closeError = error;
     }
-    await this.#writerLock.release();
-    if (closeError !== undefined) {
+    let releaseError: unknown;
+    try {
+      await this.#writerLock.release();
+    } catch (error) {
+      releaseError = error;
+    }
+    if (closeError !== undefined || releaseError !== undefined) {
       throw new AssayError(
         "storage_corrupt",
-        "storage_corrupt: SQLite failed while closing the store; committed records remain governed by WAL recovery; reopen and run assay doctor",
-        { cause: closeError }
+        "storage_corrupt: SQLite close or writer-lock release failed; committed records remain governed by WAL recovery; reopen and run assay doctor",
+        { cause: closeError ?? releaseError }
       );
     }
   }
