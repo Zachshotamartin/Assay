@@ -4,8 +4,11 @@ import {
   createRunId,
   createTaskId,
   createTaskRunId,
+  createVariantName,
+  type AssayEvent,
   type Clock,
-  type IdSource
+  type IdSource,
+  type NewRunRecord
 } from "@assay/contracts";
 
 import {
@@ -18,8 +21,12 @@ import {
 const markerValues = new Set<StoreFaultMarker>([
   "before_blob_rename",
   "after_blob_rename",
+  "before_run_commit",
+  "after_run_commit",
   "before_task_run_commit",
-  "after_task_run_commit"
+  "after_task_run_commit",
+  "before_event_commit",
+  "after_event_commit"
 ]);
 const [projectRoot, runIdValue, taskRunIdValue, markerValue] = process.argv.slice(2);
 
@@ -44,6 +51,19 @@ const clock: Clock = {
 const oneValue = <T extends string>(value: T): IdSource<T> => ({ next: () => value });
 const trajectoryBytes = new TextEncoder().encode("crash injection trajectory");
 const trajectoryHash = createBlobHash(sha256Blob(trajectoryBytes));
+const runRecord: NewRunRecord = {
+  createdAtUtc: wallTime,
+  suiteHash: createContentHash("c".repeat(64)),
+  variant: createVariantName("baseline"),
+  adapterId: "simulated",
+  adapterVersion: "1.0.0",
+  modelId: null,
+  seed: 23,
+  harnessVersion: "0.0.0",
+  runsPerTask: 1,
+  status: "completed",
+  isolation: "container"
+};
 const taskRun: NewTaskRunRecord = {
   taskId: createTaskId("task-crash"),
   taskContentHash: createContentHash("d".repeat(64)),
@@ -58,12 +78,20 @@ const taskRun: NewTaskRunRecord = {
   startedAtUtc: wallTime,
   endedAtUtc: wallTime
 };
+const completedEvent: AssayEvent = {
+  schema_version: 1,
+  type: "TaskRunCompleted",
+  run_id: runId,
+  task_run_id: taskRunId,
+  timestamp: wallTime,
+  payload: { outcome: "pass" }
+};
 
 const store = await openRunStore({
   projectRoot,
   clock,
   processId: process.pid,
-  runIdSource: oneValue(createRunId("01890f4e-7b72-7000-8000-000000000299")),
+  runIdSource: oneValue(runId),
   taskRunIdSource: oneValue(taskRunId),
   eventIdSource: oneValue("event-crash"),
   lockPolicy: { maxAttempts: 3, retryDelayMs: 2 },
@@ -75,8 +103,16 @@ const store = await openRunStore({
 });
 
 try {
-  await store.putBlob(trajectoryBytes);
-  await store.appendTaskRun(runId, taskRun);
+  if (marker === "before_run_commit" || marker === "after_run_commit") {
+    await store.appendRun(runRecord);
+  } else {
+    await store.putBlob(trajectoryBytes);
+    await store.appendTaskRunWithEvents(
+      runId,
+      taskRun,
+      [{ sequence: 0, event: completedEvent }]
+    );
+  }
 } finally {
   await store.close();
 }

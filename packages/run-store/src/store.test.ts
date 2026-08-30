@@ -1,4 +1,4 @@
-import { chmod, mkdtemp, readdir, stat, symlink, writeFile } from "node:fs/promises";
+import { chmod, mkdtemp, readFile, readdir, stat, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
@@ -189,6 +189,27 @@ describe("R1.12 store core", () => {
     await store.close();
   });
 
+  it("writes one stable private store-identity config marker", async () => {
+    const projectRoot = await temporaryProject();
+    let store = await openRunStore(storeOptions(projectRoot));
+    const markerPath = join(projectRoot, ".assay", "config");
+    const firstBytes = await readFile(markerPath, "utf8");
+    const marker = JSON.parse(firstBytes) as Record<string, unknown>;
+
+    expect(marker).toEqual({
+      createdByVersion: "0.0.0",
+      schemaVersion: 1,
+      storeId: expect.stringMatching(/^[0-9a-f]{64}$/u)
+    });
+    expect(firstBytes).toBe(canonicalJson(marker));
+    expect((await stat(markerPath)).mode & 0o777).toBe(0o600);
+
+    await store.close();
+    store = await openRunStore(storeOptions(projectRoot));
+    expect(await readFile(markerPath, "utf8")).toBe(firstBytes);
+    await store.close();
+  });
+
   it("rejects absolute, traversal, and symlinked store paths before creating outside state", async () => {
     const projectRoot = await temporaryProject();
     const outsideRoot = await temporaryProject();
@@ -242,6 +263,64 @@ describe("R1.12 store core", () => {
     expect(raw.record_json).toBe(canonicalJson({ runId, ...runInput }));
     expect(raw.record_hash).toMatch(/^[0-9a-f]{64}$/u);
 
+    await store.close();
+  });
+
+  it("STO-001 commits a task-run row and its associated events as one batch", async () => {
+    const projectRoot = await temporaryProject();
+    const store = await openRunStore(storeOptions(projectRoot));
+    const runId = await store.appendRun(newRun());
+    const taskInput = newTaskRun();
+    const event: AssayEvent = {
+      schema_version: 1,
+      type: "TaskRunCompleted",
+      run_id: runId,
+      task_run_id: TASK_RUN_IDS[0],
+      timestamp: wallTime,
+      payload: { outcome: "pass" }
+    };
+
+    const taskRunId = await store.appendTaskRunWithEvents(
+      runId,
+      taskInput,
+      [{ sequence: 0, event }]
+    );
+
+    expect(taskRunId).toBe(TASK_RUN_IDS[0]);
+    expect(await store.getTaskRun(taskRunId)).toEqual({ taskRunId, runId, ...taskInput });
+    expect(await store.listEvents(runId)).toEqual([
+      { eventId: "event-0001", sequence: 0, event }
+    ]);
+    await store.close();
+  });
+
+  it("STO-001 rolls back the task-run row when an associated event faults", async () => {
+    const projectRoot = await temporaryProject();
+    const store = await openRunStore(storeOptions(projectRoot, {
+      faultInjector: (marker) => {
+        if (marker === "before_event_commit") {
+          throw new Error("injected event failure");
+        }
+      }
+    }));
+    const runId = await store.appendRun(newRun());
+    const event: AssayEvent = {
+      schema_version: 1,
+      type: "TaskRunCompleted",
+      run_id: runId,
+      task_run_id: TASK_RUN_IDS[0],
+      timestamp: wallTime,
+      payload: { outcome: "pass" }
+    };
+
+    await expect(store.appendTaskRunWithEvents(
+      runId,
+      newTaskRun(),
+      [{ sequence: 0, event }]
+    )).rejects.toMatchObject({ category: "internal_invariant" });
+
+    expect(await collect(store.listTaskRuns(runId))).toEqual([]);
+    expect(await store.listEvents(runId)).toEqual([]);
     await store.close();
   });
 

@@ -70,11 +70,13 @@ function runRecord(): NewRunRecord {
   };
 }
 
-async function initializeProject(): Promise<string> {
+async function initializeProject(withRun: boolean): Promise<string> {
   const projectRoot = await mkdtemp(join(tmpdir(), "assay-store-crash-"));
   roots.push(projectRoot);
   const store = await openRunStore(options(projectRoot));
-  expect(await store.appendRun(runRecord())).toBe(runId);
+  if (withRun) {
+    expect(await store.appendRun(runRecord())).toBe(runId);
+  }
   await store.close();
   return projectRoot;
 }
@@ -126,14 +128,20 @@ function objectPath(projectRoot: string): string {
 
 describe("R1.12 store crash injection", () => {
   it.each([
-    ["before_blob_rename", false, false],
-    ["after_blob_rename", true, false],
-    ["before_task_run_commit", true, false],
-    ["after_task_run_commit", true, true]
+    ["before_run_commit", false, false, false, false],
+    ["after_run_commit", true, false, false, false],
+    ["before_blob_rename", true, false, false, false],
+    ["after_blob_rename", true, true, false, false],
+    ["before_task_run_commit", true, true, false, false],
+    ["before_event_commit", true, true, false, false],
+    ["after_task_run_commit", true, true, true, true],
+    ["after_event_commit", true, true, true, true]
   ] as const)(
     "STO-001/STO-002 kill at %s leaves only durable complete state",
-    async (marker, blobExpected, rowExpected) => {
-      const projectRoot = await initializeProject();
+    async (marker, runExpected, blobExpected, rowExpected, eventExpected) => {
+      const projectRoot = await initializeProject(
+        marker !== "before_run_commit" && marker !== "after_run_commit"
+      );
       const child = await crashAt(projectRoot, marker);
 
       expect(child.timedOut, child.stderr).toBe(false);
@@ -141,13 +149,20 @@ describe("R1.12 store crash injection", () => {
       expect(child.signal, child.stderr).toBe("SIGKILL");
 
       const store = await openRunStore(options(projectRoot));
-      expect(await store.getRun(runId)).toEqual({ runId, ...runRecord() });
+      const runs = [];
+      for await (const record of store.listRuns({})) {
+        runs.push(record);
+      }
+      expect(runs).toEqual(runExpected ? [{ runId, ...runRecord() }] : []);
       expect(await exists(objectPath(projectRoot))).toBe(blobExpected);
       const taskRuns = [];
       for await (const record of store.listTaskRuns(runId)) {
         taskRuns.push(record);
       }
       expect(taskRuns.map(({ taskRunId: id }) => id)).toEqual(rowExpected ? [taskRunId] : []);
+      expect((await store.listEvents(runId)).map(({ eventId }) => eventId)).toEqual(
+        eventExpected ? ["event-crash"] : []
+      );
       expect((await store.verifyIntegrity()).danglingBlobReferences).toEqual([]);
       expect(await store.listQuarantined()).toEqual([]);
       await store.close();
