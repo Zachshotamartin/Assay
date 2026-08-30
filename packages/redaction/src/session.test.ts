@@ -58,6 +58,18 @@ describe("buffered redaction sessions", () => {
     expect(new TextDecoder("utf-8", { fatal: true }).decode(result.value)).toContain("snowman=☃");
   });
 
+  it("copies Node Buffer chunks instead of retaining a shared slice", () => {
+    const source = Buffer.from(`stderr=${OPENAI_KEY}`, "utf8");
+    const session = createUtf8RedactionSession();
+    session.write(source);
+    source.fill(0x78);
+
+    const result = session.finish();
+    const output = new TextDecoder("utf-8", { fatal: true }).decode(result.value);
+    expect(output).toContain("[REDACTED:provider-openai:");
+    expect(source.every((byte) => byte === 0x78)).toBe(true);
+  });
+
   it("fails closed when accumulated frames exceed the configured bound", () => {
     const session = createTextRedactionSession({ maxInputBytes: 5 });
     session.write("123");
