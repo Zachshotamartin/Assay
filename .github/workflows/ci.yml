@@ -177,5 +177,7 @@ jobs:
         run: npm run build
       - name: Run simulated end-to-end tests
         run: npm run test:e2e:simulated
+      - name: Compare canonical reference-run bytes
+        run: npm run test:reproducibility
       - name: Enforce semantic golden review
         run: npm run check:goldens

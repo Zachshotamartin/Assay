@@ -1,0 +1,27 @@
+{
+  "extends": "../tsconfig.base.json",
+  "compilerOptions": {
+    "baseUrl": "..",
+    "noEmit": true,
+    "paths": {
+      "@assay/adapter-core": ["packages/adapter-core/src/index.ts"],
+      "@assay/adapter-simulated": ["packages/adapter-simulated/src/index.ts"],
+      "@assay/assertions": ["packages/assertions/src/index.ts"],
+      "@assay/config": ["packages/config/src/index.ts"],
+      "@assay/contracts": ["packages/contracts/src/index.ts"],
+      "@assay/redaction": ["packages/redaction/src/index.ts"],
+      "@assay/run-store": ["packages/run-store/src/index.ts"],
+      "@assay/runner": ["packages/runner/src/index.ts"],
+      "@assay/task-format": ["packages/task-format/src/index.ts"]
+    }
+  },
+  "include": [
+    "./*.ts",
+    "../apps/cli/src/**/*.ts",
+    "../packages/*/src/**/*.ts"
+  ],
+  "exclude": [
+    "../apps/cli/src/**/*.test.ts",
+    "../packages/*/src/**/*.test.ts"
+  ]
+}
