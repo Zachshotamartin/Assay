@@ -5,6 +5,7 @@ import { DatabaseSync } from "node:sqlite";
 
 import { simulatedAdapterCommand } from "@assay/adapter-simulated";
 import {
+  canonicalJson,
   createRunId,
   createTaskRunId,
   type Clock,
@@ -205,6 +206,33 @@ describe("R1.13 validate and run integration", () => {
     await expect(stat(join(root, ".assay"))).rejects.toMatchObject({ code: "ENOENT" });
   });
 
+  it("reports every invalid document in deterministic file order with zero effects", async () => {
+    const root = await projectRoot();
+    await mkdir(join(root, "invalid"), { recursive: true });
+    await writeFile(join(root, "invalid", "a.task.yaml"), JSON.stringify({
+      format_version: "1.0",
+      id: "invalid-a",
+      title: "Invalid A",
+      surprise: true
+    }), "utf8");
+    await writeFile(join(root, "invalid", "z.task.yaml"), JSON.stringify({
+      format_version: "2.0",
+      id: "invalid-z",
+      title: "Invalid Z"
+    }), "utf8");
+    const capture = output();
+
+    const code = await executeCli(["validate", "invalid"], capture.io, runtime(root));
+
+    expect(code).toBe(4);
+    const diagnostics = capture.stderr.join("");
+    expect(diagnostics).toContain("a.task.yaml");
+    expect(diagnostics).toContain("z.task.yaml");
+    expect(diagnostics.indexOf("a.task.yaml")).toBeLessThan(diagnostics.indexOf("z.task.yaml"));
+    expect(diagnostics).toContain("task_invalid");
+    await expect(stat(join(root, ".assay"))).rejects.toMatchObject({ code: "ENOENT" });
+  });
+
   it("resolves CLI over env over file config and emits a canonical dry-run with zero effects", async () => {
     const root = await projectRoot();
     await writeProject(root, {
@@ -241,7 +269,7 @@ describe("R1.13 validate and run integration", () => {
     expect(plan["tasks"]).toEqual([
       expect.objectContaining({ id: "basic-task", repetitions: 1 })
     ]);
-    expect(capture.stdout[0]).toBe(`${JSON.stringify(plan)}\n`);
+    expect(capture.stdout[0]).toBe(`${canonicalJson(plan)}\n`);
     await expect(stat(join(root, ".assay"))).rejects.toMatchObject({ code: "ENOENT" });
   });
 
@@ -265,7 +293,8 @@ describe("R1.13 validate and run integration", () => {
       modelId: "synthetic/scripted-v1",
       seed: 7,
       runsPerTask: 2,
-      isolation: "unsafe_host"
+      isolation: "unsafe_host",
+      status: "completed"
     });
     expect(stored.taskRuns).toHaveLength(2);
     expect(stored.taskRuns).toEqual(stored.taskRuns.map((record) => expect.objectContaining({
@@ -302,6 +331,7 @@ describe("R1.13 validate and run integration", () => {
       outcome: "fail",
       errorCategory: null
     });
+    expect(databaseRows(root).runs[0]).toMatchObject({ status: "completed" });
   });
 
   it("requires explicit unsafe-host authorization before command assertions execute", async () => {
