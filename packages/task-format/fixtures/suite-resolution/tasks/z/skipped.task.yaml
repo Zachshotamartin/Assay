@@ -1,0 +1,10 @@
+format_version: "1.0"
+id: skipped-task
+title: Filtered by tag
+tags: [other]
+fixture: { path: ./fixture }
+prompt: Skip me.
+toolset: { catalog: simulated/1 }
+sandbox:
+  image: example.invalid/fixture@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+assertions: [{ type: exit_code, equals: 0 }]

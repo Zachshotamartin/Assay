@@ -1,0 +1,11 @@
+format_version: "1.0"
+id: resolution-suite
+title: Resolution fixture suite
+include:
+  - tasks/**/*.task.yaml
+tags:
+  any_of: [selected]
+variants:
+  baseline:
+    adapter: simulated
+    model: synthetic/deterministic-1
