@@ -130,6 +130,11 @@ describe("versioned pattern rules", () => {
       "plain-password",
       "azure-connection-string"
     );
+    expectSinglePattern(
+      'Server=tcp:synthetic.database.windows.net;Password="plain password;with separator"',
+      "plain password;with separator",
+      "azure-connection-string"
+    );
   });
 
   it("redacts the complete URL userinfo component", () => {

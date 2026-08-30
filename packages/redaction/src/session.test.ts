@@ -144,6 +144,19 @@ describe("logical JSON record sessions", () => {
     });
   });
 
+  it("does not let a local AWS-pattern hit expose an entropy continuation", () => {
+    const continuation = "QRSTUVWX";
+    const session = createJsonRedactionSession();
+    session.write({ value: "AKIAABCDEFGHIJKLMNOP" });
+    session.write({ value: continuation });
+
+    const results = session.finish();
+    expect(results[0]?.value).toEqual({ value: "[REDACTED:entropy:20]" });
+    expect(results[1]?.value).toEqual({
+      value: `[REDACTED:entropy:${continuation.length}]`
+    });
+  });
+
   it("detects a provider key split across different fields in adjacent records", () => {
     const firstSecretFragment = "sk-proj-SYNTHETIC0123";
     const secondSecretFragment = "456789abcdefghijklmnopqrstuv";
@@ -158,6 +171,20 @@ describe("logical JSON record sessions", () => {
     expect(results[1]?.value).toEqual({
       result: `[REDACTED:provider-openai:${secondSecretFragment.length}]`
     });
+  });
+
+  it("detects a provider key split across three changing record fields", () => {
+    const session = createJsonRedactionSession();
+    session.write({ delta: "sk-proj-SYN" });
+    session.write({ content: "THETIC0123" });
+    session.write({ result: "456789abcdefghijklmnopqrstuv" });
+
+    const results = session.finish();
+    expect(results.map((result) => result.value)).toEqual([
+      { delta: "[REDACTED:provider-openai:11]" },
+      { content: "[REDACTED:provider-openai:10]" },
+      { result: "[REDACTED:provider-openai:28]" }
+    ]);
   });
 
   it("redacts an entropy token split across adjacent string fields", () => {
