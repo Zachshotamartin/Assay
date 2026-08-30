@@ -1,0 +1,6 @@
+{
+  "workspaces": {
+    "packages/alpha": [],
+    "packages/beta": []
+  }
+}
