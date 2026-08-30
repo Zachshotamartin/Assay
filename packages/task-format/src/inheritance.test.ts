@@ -145,11 +145,11 @@ describe("single-parent task inheritance", () => {
       inheritanceOptions({ [parentPath]: abstractParent })
     );
 
-    expect(result.fieldOrigins.fixture).toBe(parentPath);
-    expect(result.fieldOrigins.prompt).toBe(parentPath);
-    expect(result.fieldOrigins.assertions).toBe(parentPath);
-    expect(result.fieldOrigins.id).toBe(childPath);
-    expect(result.fieldOrigins.title).toBe(childPath);
+    expect(result.fieldOrigins["fixture"]).toBe(parentPath);
+    expect(result.fieldOrigins["prompt"]).toBe(parentPath);
+    expect(result.fieldOrigins["assertions"]).toBe(parentPath);
+    expect(result.fieldOrigins["id"]).toBe(childPath);
+    expect(result.fieldOrigins["title"]).toBe(childPath);
   });
 
   it("honors the literal +append:tags operation and removes its control key", async () => {
