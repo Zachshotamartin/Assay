@@ -1,15 +1,5 @@
 import { AssayError, exitCodeForCategory, type ExitCode } from "@assay/contracts";
-import { simulatedAdapterCommand } from "@assay/adapter-simulated";
-import { redactText } from "@assay/redaction";
-
-import {
-  loadConfigInput,
-  loadPreparedSuite,
-  resolveRuntimeConfig,
-  validateProjectInputs
-} from "./project.js";
-import { executeRunCommand } from "./run-command.js";
-import { createProcessRuntime, type CliRuntime } from "./runtime.js";
+import type { CliRuntime } from "./runtime.js";
 
 export type { CliRuntime } from "./runtime.js";
 
@@ -147,18 +137,7 @@ export async function executeCli(
   io: CliIo,
   providedRuntime?: CliRuntime
 ): Promise<ExitCode> {
-  const ownedRuntime = providedRuntime === undefined
-    ? createProcessRuntime(process.cwd(), (adapterId) => {
-        if (adapterId !== "adapter-simulated") {
-          throw new AssayError(
-            "adapter_unavailable",
-            `adapter_unavailable: adapter ${JSON.stringify(adapterId)} is not installed`
-          );
-        }
-        return simulatedAdapterCommand();
-      })
-    : undefined;
-  const runtime = providedRuntime ?? ownedRuntime!.runtime;
+  let ownedRuntime: { readonly runtime: CliRuntime; readonly dispose: () => void } | undefined;
   try {
     const invocation = parseCliInvocation(argv);
     if (invocation.command === "version") {
@@ -169,6 +148,28 @@ export async function executeCli(
       io.stdout(HELP);
       return 0;
     }
+    if (providedRuntime === undefined) {
+      const [{ createProcessRuntime }, { simulatedAdapterCommand }] = await Promise.all([
+        import("./runtime.js"),
+        import("@assay/adapter-simulated")
+      ]);
+      ownedRuntime = createProcessRuntime(process.cwd(), (adapterId) => {
+        if (adapterId !== "adapter-simulated") {
+          throw new AssayError(
+            "adapter_unavailable",
+            `adapter_unavailable: adapter ${JSON.stringify(adapterId)} is not installed`
+          );
+        }
+        return simulatedAdapterCommand();
+      });
+    }
+    const runtime = providedRuntime ?? ownedRuntime!.runtime;
+    const {
+      loadConfigInput,
+      loadPreparedSuite,
+      resolveRuntimeConfig,
+      validateProjectInputs
+    } = await import("./project.js");
     const configInput = await loadConfigInput(runtime.projectRoot);
     resolveRuntimeConfig(runtime, configInput);
     if (invocation.command === "validate") {
@@ -181,6 +182,7 @@ export async function executeCli(
       return 0;
     }
     const suite = await loadPreparedSuite(runtime.projectRoot, invocation.suitePath);
+    const { executeRunCommand } = await import("./run-command.js");
     return await executeRunCommand(invocation, suite, configInput, runtime, io);
   } catch (error) {
     let classified = error instanceof AssayError
@@ -194,6 +196,7 @@ export async function executeCli(
         : new AssayError("internal_invariant", "internal_invariant: unexpected CLI failure", { cause: error });
     let rendered: string;
     try {
+      const { redactText } = await import("@assay/redaction");
       rendered = redactText(classified.message, { location: "/diagnostic" }).value;
     } catch (cause) {
       classified = new AssayError(
