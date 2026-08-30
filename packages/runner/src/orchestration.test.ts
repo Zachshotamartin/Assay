@@ -58,7 +58,7 @@ describe("R1 sequential task-run orchestration", () => {
 
     expect(calls).toEqual([
       "materialize:one", "start:one", "collect:one", "seal:one", "assert:one",
-      "persist:one:scored:pass", "cleanup:one"
+      "cleanup:one", "persist:one:scored:pass"
     ]);
     expect(result.history.map(({ state }) => state)).toEqual([
       "planned", "materializing", "agent_running", "collecting", "asserting",
@@ -156,6 +156,29 @@ describe("R1 sequential task-run orchestration", () => {
     expect(result.lifecycle).toEqual({
       state: "timed_out", outcome: "error", errorCategory: "sandbox_timeout"
     });
+  });
+
+  it("settles cleanup before persistence and durably records cleanup failure", async () => {
+    const calls: string[] = [];
+    const result = await executeTaskRun(
+      { id: "cleanup-failure" },
+      stages(calls, {
+        async cleanup(plan) {
+          calls.push(`cleanup:${plan.id}`);
+          throw new AssayError("sandbox_start_failed", "cleanup failed");
+        }
+      }),
+      new AbortController().signal
+    );
+
+    expect(result.lifecycle).toEqual({
+      state: "failed_infrastructure",
+      outcome: "error",
+      errorCategory: "sandbox_start_failed"
+    });
+    expect(calls.at(-1)).toBe(
+      "persist:cleanup-failure:failed_infrastructure:error"
+    );
   });
 
   it("converts an unknown thrown value once into internal_invariant", async () => {
