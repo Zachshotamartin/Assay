@@ -6,10 +6,12 @@ import { describe, expect, it } from "vitest";
 import {
   encodeAdapterEventFrame,
   parseAdapterEventFrame,
+  parseAdapterEventFrameDetailed,
   parseAdapterHandshakeFrame,
   parseAdapterRunSpecFrame,
   serializeAdapterRunSpec
 } from "./codec.js";
+import { MAX_ADAPTER_STRING_BYTES } from "./line-splitter.js";
 
 const fixtureRoot = new URL("./fixtures/", import.meta.url);
 
@@ -25,6 +27,7 @@ const eventFixtures = [
   "tool-result.json",
   "usage.json",
   "text-output.json",
+  "text-output-truncated.json",
   "log.json",
   "run-completed.json",
   "run-failed.json"
@@ -120,6 +123,45 @@ describe("assay-adapter/1 event frames", () => {
     });
   });
 
+  it("round-trips explicit truncation metadata and rejects incomplete metadata", () => {
+    expect(parseAdapterEventFrame(fixture("accept", "text-output-truncated.json"))).toMatchObject({
+      type: "text_output",
+      truncated: true,
+      originalSha256: "a".repeat(64)
+    });
+    expectCategory(
+      () => parseAdapterEventFrame(fixture("reject", "truncation-incomplete.json")),
+      "adapter_protocol_error"
+    );
+  });
+
+  it("measures the universal string limit in UTF-8 bytes and defensively truncates payloads", () => {
+    const exactlyBounded = "é".repeat(MAX_ADAPTER_STRING_BYTES / 2);
+    expect(parseAdapterEventFrame(JSON.stringify({
+      type: "text_output", seq: 2, ts: "2026-01-02T03:04:05.006Z", text: exactlyBounded
+    }))).toMatchObject({ text: exactlyBounded });
+
+    const overlong = `${exactlyBounded}é`;
+    const parsed = parseAdapterEventFrameDetailed(JSON.stringify({
+      type: "text_output", seq: 2, ts: "2026-01-02T03:04:05.006Z", text: overlong
+    }));
+    expect(encoderByteLength((parsed.event as { text: string }).text))
+      .toBe(MAX_ADAPTER_STRING_BYTES);
+    expect(parsed.event).toMatchObject({
+      truncated: true,
+      originalSha256: expect.stringMatching(/^[0-9a-f]{64}$/u)
+    });
+    expect(parsed.defensiveTruncations).toEqual([
+      expect.objectContaining({ path: "$.text", originalBytes: MAX_ADAPTER_STRING_BYTES + 2 })
+    ]);
+  });
+
+  it("rejects overlong identity strings instead of corrupting pairing keys", () => {
+    const value = JSON.parse(fixture("accept", "model-request.json")) as Record<string, unknown>;
+    value["request_id"] = "r".repeat(MAX_ADAPTER_STRING_BYTES + 1);
+    expectCategory(() => parseAdapterEventFrame(JSON.stringify(value)), "adapter_protocol_error");
+  });
+
   it("keeps every accepted and rejected fixture as an individual JSON document", async () => {
     for (const group of ["accept", "reject"] as const) {
       const names = await readdir(new URL(`${group}/`, fixtureRoot));
@@ -130,6 +172,10 @@ describe("assay-adapter/1 event frames", () => {
     }
   });
 });
+
+function encoderByteLength(value: string): number {
+  return new TextEncoder().encode(value).byteLength;
+}
 
 describe("assay-adapter/1 handshake negotiation", () => {
   it.each(["handshake-full.json", "handshake-trajectory.json", "handshake-black-box.json"])(
