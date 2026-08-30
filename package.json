@@ -13,7 +13,7 @@
     "packages/*"
   ],
   "scripts": {
-    "build": "npm run build --workspaces --if-present",
+    "build": "tsc -b --pretty false && node esbuild.config.mjs",
     "typecheck": "tsc -b",
     "test": "vitest run --workspace vitest.workspace.ts --passWithNoTests",
     "test:unit": "vitest run --workspace vitest.workspace.ts --passWithNoTests",
