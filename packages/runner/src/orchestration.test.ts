@@ -106,8 +106,10 @@ describe("R1 sequential task-run orchestration", () => {
       outcome: "error",
       errorCategory: "adapter_protocol_error"
     });
-    expect(calls).toContain("persist:broken:failed_infrastructure:error");
-    expect(calls.at(-1)).toBe("cleanup:broken");
+    expect(calls.slice(-2)).toEqual([
+      "cleanup:broken",
+      "persist:broken:failed_infrastructure:error"
+    ]);
   });
 
   it("fails closed without persistence when redaction fails", async () => {
