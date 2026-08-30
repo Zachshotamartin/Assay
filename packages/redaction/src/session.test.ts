@@ -209,6 +209,48 @@ describe("logical JSON record sessions", () => {
     ]);
   });
 
+  it("uses explicit continuation pointers when payload ordinals drift", () => {
+    const session = createJsonRedactionSession();
+    session.write({ type: "chunk", delta: "sk-proj-" }, ["/delta"]);
+    session.write(
+      { type: "chunk", requestId: "stable-metadata", content: "AAAAAAAAAA" },
+      ["/content"]
+    );
+    session.write(
+      { type: "chunk", extra: "more-metadata", result: "AAAAAAAAAA" },
+      ["/result"]
+    );
+
+    expect(session.finish().map((result) => result.value)).toEqual([
+      { type: "chunk", delta: "[REDACTED:provider-openai:8]" },
+      {
+        type: "chunk",
+        requestId: "stable-metadata",
+        content: "[REDACTED:provider-openai:10]"
+      },
+      {
+        type: "chunk",
+        extra: "more-metadata",
+        result: "[REDACTED:provider-openai:10]"
+      }
+    ]);
+  });
+
+  it.each([
+    [["not-a-pointer"], "non-pointer"],
+    [["/missing"], "missing"],
+    [["/count"], "non-string"],
+    [["/text", "/text"], "duplicate"]
+  ])("fails closed for %s explicit continuation locations", (locations) => {
+    const session = createJsonRedactionSession();
+    expect(() =>
+      session.write({ text: "safe", count: 1 }, locations)
+    ).toThrowError(expect.objectContaining({ category: "redaction_failed" }));
+    expect(() => session.finish()).toThrowError(
+      expect.objectContaining({ category: "redaction_failed" })
+    );
+  });
+
   it("redacts an entropy token split across adjacent string fields", () => {
     const firstFragment = "ABCDEFGH";
     const secondFragment = "IJKLMNOPQRST";
@@ -248,6 +290,16 @@ describe("logical JSON record sessions", () => {
     expect(JSON.stringify(result?.value)).not.toContain(OPENAI_KEY);
     expect(JSON.stringify(result?.manifest)).not.toContain(OPENAI_KEY);
     expect(result?.manifest.applied.every((entry) => entry.location === "" || entry.location.startsWith("/[REDACTED:"))).toBe(true);
+  });
+
+  it("fails closed when distinct secret keys map to the same replacement key", () => {
+    const secondKey = `${OPENAI_KEY.slice(0, -1)}w`;
+    const session = createJsonRedactionSession();
+    session.write({ [OPENAI_KEY]: "first", [secondKey]: "second" });
+
+    expect(() => session.finish()).toThrowError(
+      expect.objectContaining({ category: "redaction_failed" })
+    );
   });
 
   it("fails closed and releases no result when the bounded record window overflows", () => {

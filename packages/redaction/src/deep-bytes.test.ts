@@ -52,6 +52,20 @@ describe("deep JSON redaction", () => {
     );
   });
 
+  it("uses one immutable known-hash snapshot for every key and leaf", () => {
+    const hash = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
+    const knownHashes = new Set([hash]);
+    const result = redactJsonDeep(
+      { first: hash, second: hash },
+      {
+        knownHashes,
+        stageHook: () => knownHashes.clear()
+      }
+    );
+
+    expect(result.value).toEqual({ first: hash, second: hash });
+  });
+
   it.each([
     undefined,
     1n,
