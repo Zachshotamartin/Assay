@@ -11,6 +11,7 @@ import {
 
 import {
   validateSuiteDocument,
+  validateMatrixDocument,
   validateTaskDocument,
   type SchemaValidationFailure,
   type SchemaValidationResult
@@ -19,11 +20,18 @@ import {
 export const MAX_YAML_FILE_BYTES = 1_048_576;
 const MAX_ALIAS_COUNT = 100;
 
-type YamlKind = "task" | "suite";
+type YamlKind = "task" | "suite" | "matrix";
 type YamlCategory = Extract<AssayErrorCategory, "task_invalid" | "suite_invalid">;
 
 export type TaskDocument = Readonly<Record<string, unknown>>;
 export type SuiteDocument = Readonly<Record<string, unknown>>;
+export type MatrixScalar = string | number | boolean;
+export type MatrixDocument = Readonly<Record<string, unknown>> & {
+  readonly format_version: "1.0";
+  readonly task: string;
+  readonly axes: Readonly<Record<string, readonly MatrixScalar[]>>;
+  readonly exclude?: readonly Readonly<Record<string, MatrixScalar>>[];
+};
 
 export interface LoadedYaml<TDocument extends Readonly<Record<string, unknown>>> {
   readonly path: string;
@@ -75,7 +83,7 @@ const DEFAULT_IO: YamlLoaderIo = {
 };
 
 function categoryFor(kind: YamlKind): YamlCategory {
-  return kind === "task" ? "task_invalid" : "suite_invalid";
+  return kind === "suite" ? "suite_invalid" : "task_invalid";
 }
 
 function failure(
@@ -249,7 +257,9 @@ function parseAndValidate(
   const parsed = parsePlainDocument(bytes, filePath, kind);
   const validation: SchemaValidationResult = kind === "task"
     ? validateTaskDocument(parsed.value)
-    : validateSuiteDocument(parsed.value);
+    : kind === "suite"
+      ? validateSuiteDocument(parsed.value)
+      : validateMatrixDocument(parsed.value);
 
   if (!validation.ok) {
     const position = positionForSchemaFailure(
@@ -289,6 +299,13 @@ export function parseSuiteBytes(
   return parseAndValidate(bytes, filePath, "suite");
 }
 
+export function parseMatrixBytes(
+  bytes: Uint8Array,
+  filePath: string
+): LoadedYaml<MatrixDocument> {
+  return parseAndValidate(bytes, filePath, "matrix") as LoadedYaml<MatrixDocument>;
+}
+
 export async function loadTask(
   filePath: string,
   io: YamlLoaderIo = DEFAULT_IO
@@ -301,4 +318,11 @@ export async function loadSuite(
   io: YamlLoaderIo = DEFAULT_IO
 ): Promise<LoadedYaml<SuiteDocument>> {
   return parseSuiteBytes(await io.readFile(filePath), filePath);
+}
+
+export async function loadMatrix(
+  filePath: string,
+  io: YamlLoaderIo = DEFAULT_IO
+): Promise<LoadedYaml<MatrixDocument>> {
+  return parseMatrixBytes(await io.readFile(filePath), filePath);
 }

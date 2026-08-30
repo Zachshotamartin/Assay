@@ -1,4 +1,5 @@
 import { readFile } from "node:fs/promises";
+import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { canonicalJson } from "@assay/contracts";
@@ -94,7 +95,22 @@ describe("deterministic matrix expansion", () => {
     );
     const matrix = parseMatrixBytes(await readFile(fixturePath), fixturePath);
 
-    expect(() => expandMatrix(matrix, baseTask)).toThrowError(
+    const fixtureBase = {
+      ...baseTask,
+      path: resolve(dirname(fixturePath), matrix.document.task),
+      document: {
+        format_version: "1.0",
+        id: "matrix-task",
+        title: "Collision fixture",
+        fixture: { path: "./fixture" },
+        prompt: "Run the collision fixture.",
+        toolset: { catalog: "simulated/1" },
+        sandbox: { image: `example.invalid/fixture@sha256:${digest}` },
+        assertions: [{ type: "exit_code", equals: 0 }]
+      }
+    };
+
+    expect(() => expandMatrix(matrix, fixtureBase)).toThrowError(
       expect.objectContaining({
         category: "task_invalid",
         code: "task_invalid/matrix-id-collision",
