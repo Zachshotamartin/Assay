@@ -1,0 +1,199 @@
+import { resolve } from "node:path";
+
+import { describe, expect, it } from "vitest";
+
+import {
+  TaskFormatError,
+  resolveTaskInheritance,
+  type LoadedYaml,
+  type TaskDocument
+} from "./index.js";
+
+const digest = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
+
+function loaded(path: string, document: TaskDocument): LoadedYaml<TaskDocument> {
+  return { path, source: "", document };
+}
+
+function fixtureLoader(
+  entries: Readonly<Record<string, TaskDocument>>
+): (path: string) => Promise<LoadedYaml<TaskDocument>> {
+  return async (path) => {
+    const document = entries[path];
+    if (document === undefined) {
+      const error = new Error(`missing ${path}`) as NodeJS.ErrnoException;
+      error.code = "ENOENT";
+      throw error;
+    }
+    return loaded(path, document);
+  };
+}
+
+const abstractParent: TaskDocument = {
+  format_version: "1.0",
+  id: "parent-task",
+  abstract: true,
+  description: "parent description",
+  tags: ["parent", "shared"],
+  fixture: { path: "./parent-fixture" },
+  prompt: "parent prompt",
+  toolset: { catalog: "simulated/1", allow: ["read_file"] },
+  sandbox: {
+    image: `example.invalid/fixture@sha256:${digest}`,
+    network: "none",
+    memory_mb: 1024
+  },
+  assertions: [{ type: "exit_code", equals: 0 }],
+  budgets: {
+    dollars: { limit: 1, aggregate: "median", scope: "task" },
+    tokens: { limit: 100, aggregate: "median", scope: "task" }
+  },
+  run_policy: { n: 10, seed: 7 }
+};
+
+const concreteChild: TaskDocument = {
+  format_version: "1.0",
+  id: "child-task",
+  title: "Concrete child",
+  extends: "./parent.task.yaml",
+  description: "child description",
+  tags: ["child", "shared"],
+  fixture: { path: "./child-fixture" },
+  prompt: "child prompt",
+  toolset: { catalog: "simulated/1", allow: ["write_file"] },
+  sandbox: { memory_mb: 2048 },
+  assertions: [{ type: "file_exists", path: "result.txt" }],
+  budgets: {
+    tokens: { limit: 200, aggregate: "p95", scope: "task" }
+  }
+};
+
+describe("single-parent task inheritance", () => {
+  it("applies every BUILD_PLAN merge rule field by field", async () => {
+    const childPath = "/project/tasks/child.task.yaml";
+    const parentPath = "/project/tasks/parent.task.yaml";
+    const result = await resolveTaskInheritance(loaded(childPath, concreteChild), {
+      loadTask: fixtureLoader({ [parentPath]: abstractParent })
+    });
+
+    expect(result.inheritanceChain).toEqual([parentPath, childPath]);
+    expect(result.document).toMatchObject({
+      format_version: "1.0",
+      id: "child-task",
+      title: "Concrete child",
+      description: "child description",
+      tags: ["child", "shared", "parent"],
+      fixture: { path: "./child-fixture" },
+      prompt: "child prompt",
+      toolset: { catalog: "simulated/1", allow: ["write_file"] },
+      sandbox: {
+        image: `example.invalid/fixture@sha256:${digest}`,
+        network: "none",
+        memory_mb: 2048
+      },
+      assertions: [{ type: "file_exists", path: "result.txt" }],
+      budgets: {
+        dollars: { limit: 1, aggregate: "median", scope: "task" },
+        tokens: { limit: 200, aggregate: "p95", scope: "task" }
+      },
+      run_policy: { n: 10, seed: 7 }
+    });
+    expect(result.document).not.toHaveProperty("extends");
+    expect(result.document).not.toHaveProperty("abstract");
+  });
+
+  it("honors the literal +append:tags operation and removes its control key", async () => {
+    const childPath = "/project/tasks/child.task.yaml";
+    const parentPath = "/project/tasks/parent.task.yaml";
+    const { tags: _tags, ...childWithoutTags } = concreteChild;
+    const child = {
+      ...childWithoutTags,
+      "+append:tags": ["child"]
+    } as TaskDocument;
+
+    const result = await resolveTaskInheritance(loaded(childPath, child), {
+      loadTask: fixtureLoader({ [parentPath]: abstractParent })
+    });
+
+    expect(result.document["tags"]).toEqual(["parent", "shared", "child"]);
+    expect(result.document).not.toHaveProperty("+append:tags");
+  });
+
+  it.each([
+    ["self", {
+      "/project/self.task.yaml": {
+        format_version: "1.0",
+        id: "self-task",
+        title: "Self",
+        extends: "./self.task.yaml"
+      }
+    }],
+    ["two-node", {
+      "/project/a.task.yaml": {
+        format_version: "1.0",
+        id: "task-a",
+        title: "A",
+        extends: "./b.task.yaml"
+      },
+      "/project/b.task.yaml": {
+        format_version: "1.0",
+        id: "task-b",
+        title: "B",
+        extends: "./a.task.yaml"
+      }
+    }]
+  ] as const)("rejects a %s cycle and names its traversal chain", async (_name, entries) => {
+    const firstPath = Object.keys(entries)[0] as string;
+
+    await expect(
+      resolveTaskInheritance(loaded(firstPath, entries[firstPath] as TaskDocument), {
+        loadTask: fixtureLoader(entries)
+      })
+    ).rejects.toMatchObject({
+      category: "task_invalid",
+      code: "task_invalid/extends-cycle",
+      chain: expect.arrayContaining([firstPath])
+    });
+  });
+
+  it("rejects inheritance deeper than eight files", async () => {
+    const entries: Record<string, TaskDocument> = {};
+    for (let index = 0; index < 9; index += 1) {
+      const path = `/project/task-${index}.task.yaml`;
+      entries[path] = {
+        format_version: "1.0",
+        id: `task-${index}`,
+        title: `Task ${index}`,
+        ...(index < 8 ? { extends: `./task-${index + 1}.task.yaml` } : { abstract: true })
+      };
+    }
+
+    await expect(
+      resolveTaskInheritance(loaded("/project/task-0.task.yaml", entries["/project/task-0.task.yaml"]!), {
+        loadTask: fixtureLoader(entries)
+      })
+    ).rejects.toMatchObject({
+      category: "task_invalid",
+      code: "task_invalid/extends-depth"
+    });
+  });
+
+  it("maps a missing parent to extends-unresolved and keeps id/title child-owned", async () => {
+    await expect(
+      resolveTaskInheritance(
+        loaded("/project/child.task.yaml", {
+          format_version: "1.0",
+          id: "child-task",
+          title: "Child",
+          extends: "./missing.task.yaml"
+        }),
+        { loadTask: fixtureLoader({}) }
+      )
+    ).rejects.toMatchObject({
+      category: "task_invalid",
+      code: "task_invalid/extends-unresolved"
+    });
+
+    expect(resolve("/project", "./missing.task.yaml")).toBe("/project/missing.task.yaml");
+  });
+});
