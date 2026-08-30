@@ -8,7 +8,7 @@
   "properties": {
     "type": { "const": "handshake" },
     "seq": { "const": 1 },
-    "contract": { "type": "string", "pattern": "^assay-adapter/(0|[1-9][0-9]*)$" },
+    "contract": { "type": "string", "maxLength": 262144, "pattern": "^assay-adapter/(0|[1-9][0-9]*)$" },
     "adapter": {
       "type": "object",
       "additionalProperties": false,
@@ -17,6 +17,7 @@
         "id": { "type": "string", "pattern": "^[a-z0-9-]{1,64}$" },
         "version": {
           "type": "string",
+          "maxLength": 262144,
           "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-(?:0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*)(?:\\.(?:0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*))*)?(?:\\+[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?$"
         }
       }
@@ -56,9 +57,9 @@
       "additionalProperties": false,
       "required": ["provider", "model", "family"],
       "properties": {
-        "provider": { "type": "string" },
-        "model": { "type": "string" },
-        "family": { "type": "string" }
+        "provider": { "type": "string", "maxLength": 262144 },
+        "model": { "type": "string", "maxLength": 262144 },
+        "family": { "type": "string", "maxLength": 262144 }
       }
     },
     "modelOrNull": {
@@ -72,7 +73,7 @@
       "additionalProperties": false,
       "required": ["name", "semantic_class"],
       "properties": {
-        "name": { "type": "string" },
+        "name": { "type": "string", "maxLength": 262144 },
         "semantic_class": { "enum": ["read", "write", "execute"] }
       }
     }

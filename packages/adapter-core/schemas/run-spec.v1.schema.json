@@ -11,14 +11,15 @@
   "properties": {
     "type": { "const": "run_spec" },
     "contract": { "const": "assay-adapter/1" },
-    "task_id": { "type": "string" },
-    "task_run_id": { "type": "string" },
-    "prompt": { "type": "string" },
-    "workspace_path": { "type": "string" },
-    "seed": { "type": "string" },
+    "task_id": { "type": "string", "maxLength": 262144 },
+    "task_run_id": { "type": "string", "maxLength": 262144 },
+    "prompt": { "type": "string", "maxLength": 262144 },
+    "workspace_path": { "type": "string", "maxLength": 262144 },
+    "seed": { "type": "string", "maxLength": 262144 },
     "env": {
       "type": "object",
-      "additionalProperties": { "type": "string" }
+      "propertyNames": { "maxLength": 262144 },
+      "additionalProperties": { "type": "string", "maxLength": 262144 }
     },
     "limits": {
       "type": "object",

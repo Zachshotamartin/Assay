@@ -72,7 +72,9 @@ describe("raw-byte adapter line splitter", () => {
       classification: "oversized_frame",
       byteLength: MAX_ADAPTER_FRAME_BYTES + 1
     });
-    expect(rejectedRecords[0]?.sample.byteLength).toBe(MAX_MALFORMED_DIAGNOSTIC_BYTES);
+    const rejected = rejectedRecords[0];
+    if (rejected === undefined || rejected.ok) throw new Error("expected oversized-frame fault");
+    expect(rejected.sample.byteLength).toBe(MAX_MALFORMED_DIAGNOSTIC_BYTES);
   });
 
   it("classifies an EOF partial frame and keeps only a 4 KiB sample", () => {

@@ -328,33 +328,12 @@ live in `packages/contracts` (identifiers, records) and `packages/
 adapter-core` (the adapter event union) and are frozen by schema fixtures
 before any consumer is written.
 
-```ts
-export type AdapterEvent =
-  | { readonly type: "handshake"; readonly contractVersion: "assay-adapter/1";
-      readonly adapterId: string; readonly adapterVersion: string;
-      readonly tier: ConformanceTier;
-      readonly toolCatalog: readonly ToolCatalogEntry[] }
-  | { readonly type: "model_request"; readonly requestId: string;
-      readonly modelId: string; readonly startedAtMs: number }
-  | { readonly type: "model_response"; readonly requestId: string;
-      readonly text: string; readonly finishReason: string;
-      readonly durationMs: number }
-  | { readonly type: "tool_call"; readonly callId: string;
-      readonly name: string; readonly argumentsJson: string;
-      readonly startedAtMs: number }
-  | { readonly type: "tool_result"; readonly callId: string;
-      readonly resultJson: string; readonly isError: boolean;
-      readonly durationMs: number }
-  | { readonly type: "usage"; readonly requestId: string;
-      readonly inputTokens: number; readonly outputTokens: number;
-      readonly reportedCostUsd?: number;
-      readonly source: "provider" | "synthetic" }
-  | { readonly type: "log"; readonly level: "info" | "warn";
-      readonly message: string }
-  | { readonly type: "completed"; readonly summary: string }
-  | { readonly type: "failed"; readonly category: string;
-      readonly message: string };
+`AdapterEvent`, `AdapterDescriptor`, and the separate handshake shape are the
+exact types in ARCHITECTURE.md section 6.8 and the schemas published by
+R1.06. ADR-0014 withdrew the earlier sketch that occupied this location; it
+must not be reintroduced as an alternate major-1 shape.
 
+```ts
 export type AssertionSpec =
   | { readonly type: "exit_code"; readonly command: string;
       readonly expected: number }
@@ -450,7 +429,7 @@ Terminal states are `completed`, `failed_infrastructure`, `timed_out`,
 | --- | --- | --- |
 | planned | materializing | The scheduler grants a concurrency slot and dispatches the task run. |
 | materializing | agent_running | Fixture hash verified, sandbox created, adapter spawned, and a valid handshake frame parsed. |
-| agent_running | collecting | The adapter emits a terminal `completed` or `failed` frame, or the adapter process exits. |
+| agent_running | collecting | The adapter emits a terminal `run_completed` or `run_failed` frame, or the adapter process exits. |
 | collecting | asserting | The trajectory record is sealed (or marked truncated) and the workspace snapshot is taken and content-addressed. |
 | asserting | judging | All deterministic and checker assertions evaluated and at least one judge assertion is declared. |
 | asserting | scored | All deterministic and checker assertions evaluated and no judge assertion is declared. |
@@ -510,21 +489,21 @@ versioned `assay-adapter/1` contract: newline-delimited JSON frames on
 stdout, one frame per line, UTF-8, each line at most 1 MiB.
 
 - **Handshake.** The first frame on stdout must be a `handshake` frame
-  carrying `contractVersion`, adapter identity, conformance tier, and the
-  declared tool catalog with semantic classes. A missing, malformed, or
-  unknown-major handshake is `adapter_protocol_error` (unknown major:
-  rejected with a stable error, FR-ADAPT-010) and the run fails as
-  infrastructure error without scoring.
-- **Event frames.** After the handshake, the adapter emits `model_request`,
-  `model_response`, `tool_call`, `tool_result`, `usage`, and `log` frames
-  in causal order. The supervisor validates every frame against the
+  carrying `contract`, `adapter`, `tier`, `model`, `tool_catalog`, and the
+  fixed capability booleans. After validation the harness writes one
+  `run_spec` line and keeps stdin open. A malformed handshake is
+  `adapter_protocol_error`; a syntactically valid unknown major is
+  `adapter_nonconformant` (FR-ADAPT-010). Neither path is scored.
+- **Event frames.** After the handshake, the adapter emits the ten exact
+  Architecture section 6 variants, beginning with `session_started`, in
+  causal order. The supervisor validates every frame against the
   published JSON Schema before use; a malformed frame is counted, bounded
   in diagnostics, and classified per the malformed-frame policy in
   section 6.4 — it never crashes the harness (FR-ADAPT-005).
-- **Termination.** Exactly one terminal frame (`completed` or `failed`)
-  ends the stream, followed by process exit. Exit without a terminal frame
-  marks the trajectory truncated. Frames after the terminal frame are
-  protocol errors.
+- **Termination.** Exactly one terminal frame (`run_completed` or
+  `run_failed`) ends the stream, followed by exit code 0 within 5 seconds.
+  Exit without a terminal frame, any nonzero exit, or a frame after the
+  terminal is `adapter_protocol_error` with a truncated trajectory.
 - **Stderr.** Adapter stderr is captured with a bounded ring buffer
   (head and tail retained, middle elided with a byte count), redacted, and
   attached to diagnostics only.

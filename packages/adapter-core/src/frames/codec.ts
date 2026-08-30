@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+
 import { Ajv2020, type ValidateFunction } from "ajv/dist/2020.js";
 
 import {
@@ -10,6 +12,7 @@ import eventSchema from "../../schemas/adapter-event.v1.schema.json" with { type
 import handshakeSchema from "../../schemas/handshake.v1.schema.json" with { type: "json" };
 import runSpecSchema from "../../schemas/run-spec.v1.schema.json" with { type: "json" };
 import { assertSupportedAdapterContract } from "../negotiation.js";
+import { MAX_ADAPTER_STRING_BYTES } from "./line-splitter.js";
 import {
   ADAPTER_CONTRACT_VERSION,
   type AdapterEvent,
@@ -62,6 +65,19 @@ const ajv = new Ajv2020({ allErrors: true, strict: true, validateFormats: false 
 const validateHandshake = ajv.compile(handshakeSchema) as ValidateFunction<HandshakeWire>;
 const validateRunSpec = ajv.compile(runSpecSchema) as ValidateFunction<RunSpecWire>;
 const validateEvent = ajv.compile(eventSchema) as ValidateFunction<EventWire>;
+const utf8Encoder = new TextEncoder();
+const utf8Decoder = new TextDecoder("utf-8", { fatal: true });
+
+export interface DefensiveTruncation {
+  readonly path: string;
+  readonly originalBytes: number;
+  readonly originalSha256: string;
+}
+
+export interface ParsedAdapterEventFrame {
+  readonly event: AdapterEvent;
+  readonly defensiveTruncations: readonly DefensiveTruncation[];
+}
 
 function protocolError(message: string, cause?: unknown): never {
   throw new AssayError(
@@ -98,6 +114,95 @@ function exactTimestamp(timestamp: string): boolean {
   return !Number.isNaN(parsed.valueOf()) && parsed.toISOString() === timestamp;
 }
 
+function sha256(bytes: Uint8Array): string {
+  return createHash("sha256").update(bytes).digest("hex");
+}
+
+function truncateUtf8(bytes: Uint8Array): string {
+  let end = Math.min(bytes.byteLength, MAX_ADAPTER_STRING_BYTES);
+  while (end >= 0) {
+    try {
+      return utf8Decoder.decode(bytes.subarray(0, end));
+    } catch {
+      end -= 1;
+    }
+  }
+  return "";
+}
+
+const TRUNCATABLE_FIELD = {
+  model_response: "text",
+  tool_result: "result",
+  text_output: "text",
+  run_completed: "summary",
+  run_failed: "message",
+  log: "message"
+} as const;
+
+function assertBoundedStrings(
+  value: unknown,
+  path: string,
+  truncatablePath: string | undefined,
+  truncations: DefensiveTruncation[]
+): void {
+  if (typeof value === "string") {
+    const bytes = utf8Encoder.encode(value);
+    if (bytes.byteLength <= MAX_ADAPTER_STRING_BYTES) return;
+    if (path !== truncatablePath) {
+      return protocolError(`${path} exceeds the ${MAX_ADAPTER_STRING_BYTES}-byte string limit`);
+    }
+    return;
+  }
+  if (Array.isArray(value)) {
+    value.forEach((entry, index) =>
+      assertBoundedStrings(entry, `${path}[${index}]`, truncatablePath, truncations)
+    );
+    return;
+  }
+  if (typeof value !== "object" || value === null) return;
+  for (const [key, entry] of Object.entries(value)) {
+    if (utf8Encoder.encode(key).byteLength > MAX_ADAPTER_STRING_BYTES) {
+      return protocolError(`${path} contains an overlong object key`);
+    }
+    const entryPath = `${path}.${key}`;
+    if (typeof entry === "string" && entryPath === truncatablePath) {
+      const bytes = utf8Encoder.encode(entry);
+      if (bytes.byteLength > MAX_ADAPTER_STRING_BYTES) {
+        const object = value as JsonObject;
+        if (object["truncated"] === true || object["original_sha256"] !== undefined) {
+          return protocolError(`${entryPath} remains oversized despite truncation metadata`);
+        }
+        const originalSha256 = sha256(bytes);
+        object[key] = truncateUtf8(bytes);
+        object["truncated"] = true;
+        object["original_sha256"] = originalSha256;
+        truncations.push({ path: entryPath, originalBytes: bytes.byteLength, originalSha256 });
+        continue;
+      }
+    }
+    assertBoundedStrings(entry, entryPath, truncatablePath, truncations);
+  }
+}
+
+function normalizeEventStrings(candidate: JsonObject): readonly DefensiveTruncation[] {
+  const type = candidate["type"];
+  const field = typeof type === "string"
+    ? TRUNCATABLE_FIELD[type as keyof typeof TRUNCATABLE_FIELD]
+    : undefined;
+  const truncations: DefensiveTruncation[] = [];
+  assertBoundedStrings(candidate, "$", field === undefined ? undefined : `$.${field}`, truncations);
+  return truncations;
+}
+
+function truncationMetadata(candidate: EventWire): Record<string, unknown> {
+  return candidate["truncated"] === true
+    ? {
+        truncated: true,
+        originalSha256: candidate["original_sha256"] as string
+      }
+    : {};
+}
+
 function toolCatalog(wire: HandshakeWire): readonly ToolCatalogEntry[] {
   const entries = wire.tool_catalog ?? [];
   const names = new Set<string>();
@@ -112,6 +217,7 @@ function toolCatalog(wire: HandshakeWire): readonly ToolCatalogEntry[] {
 
 export function parseAdapterHandshakeFrame(input: string): AdapterHandshake {
   const candidate = parseJsonObject(input);
+  assertBoundedStrings(candidate, "$", undefined, []);
   const contract = candidate["contract"];
   if (typeof contract === "string" && /^assay-adapter\/(0|[1-9][0-9]*)$/u.test(contract)) {
     assertSupportedAdapterContract(contract);
@@ -207,8 +313,9 @@ function modelFromWire(value: unknown): ModelIdentity {
   return value as ModelIdentity;
 }
 
-export function parseAdapterEventFrame(input: string): AdapterEvent {
+export function parseAdapterEventFrameDetailed(input: string): ParsedAdapterEventFrame {
   const candidate = parseJsonObject(input);
+  const defensiveTruncations = normalizeEventStrings(candidate);
   if (!validateEvent(candidate)) {
     return failedSchema("adapter event", validateEvent);
   }
@@ -218,9 +325,9 @@ export function parseAdapterEventFrame(input: string): AdapterEvent {
 
   switch (candidate.type) {
     case "session_started":
-      return { type: candidate.type, seq: candidate.seq, ts: candidate.ts, sessionId: candidate["session_id"] as string };
+      return { event: { type: candidate.type, seq: candidate.seq, ts: candidate.ts, sessionId: candidate["session_id"] as string }, defensiveTruncations };
     case "model_request":
-      return {
+      return { event: {
         type: candidate.type,
         seq: candidate.seq,
         ts: candidate.ts,
@@ -229,9 +336,9 @@ export function parseAdapterEventFrame(input: string): AdapterEvent {
         model: modelFromWire(candidate["model"]),
         messageCount: candidate["message_count"] as number,
         inputSummarySha256: candidate["input_summary_sha256"] as string
-      };
+      }, defensiveTruncations };
     case "model_response":
-      return {
+      return { event: {
         type: candidate.type,
         seq: candidate.seq,
         ts: candidate.ts,
@@ -240,10 +347,11 @@ export function parseAdapterEventFrame(input: string): AdapterEvent {
         stopReason: (candidate["stop_reason"] ?? null) as
           | "end_turn" | "tool_use" | "max_tokens" | "refusal" | "other" | null,
         latencyMs: candidate["latency_ms"] as number,
-        text: (candidate["text"] ?? null) as string | null
-      };
+        text: (candidate["text"] ?? null) as string | null,
+        ...truncationMetadata(candidate)
+      }, defensiveTruncations };
     case "tool_call":
-      return {
+      return { event: {
         type: candidate.type,
         seq: candidate.seq,
         ts: candidate.ts,
@@ -251,17 +359,18 @@ export function parseAdapterEventFrame(input: string): AdapterEvent {
         requestId: candidate["request_id"] as string,
         tool: candidate["tool"] as string,
         args: candidate["args"] as Readonly<Record<string, unknown>>
-      };
+      }, defensiveTruncations };
     case "tool_result":
-      return {
+      return { event: {
         type: candidate.type,
         seq: candidate.seq,
         ts: candidate.ts,
         callId: candidate["call_id"] as string,
         status: candidate["status"] as "ok" | "error" | "timeout",
         result: candidate["result"] as string,
-        durationMs: candidate["duration_ms"] as number
-      };
+        durationMs: candidate["duration_ms"] as number,
+        ...truncationMetadata(candidate)
+      }, defensiveTruncations };
     case "usage": {
       const promptTokens = candidate["prompt_tokens"] as number;
       const completionTokens = candidate["completion_tokens"] as number;
@@ -274,7 +383,7 @@ export function parseAdapterEventFrame(input: string): AdapterEvent {
       if (source === "synthetic" && costUsdMicros !== null && costUsdMicros !== 0) {
         return protocolError("synthetic usage must report zero cost");
       }
-      return {
+      return { event: {
         type: candidate.type,
         seq: candidate.seq,
         ts: candidate.ts,
@@ -286,29 +395,41 @@ export function parseAdapterEventFrame(input: string): AdapterEvent {
           costUsdMicros,
           source
         }
-      };
+      }, defensiveTruncations };
     }
     case "text_output":
-      return { type: candidate.type, seq: candidate.seq, ts: candidate.ts, text: candidate["text"] as string };
+      return { event: { type: candidate.type, seq: candidate.seq, ts: candidate.ts, text: candidate["text"] as string, ...truncationMetadata(candidate) }, defensiveTruncations };
     case "run_completed":
-      return { type: candidate.type, seq: candidate.seq, ts: candidate.ts, summary: candidate["summary"] as string };
+      return { event: { type: candidate.type, seq: candidate.seq, ts: candidate.ts, summary: candidate["summary"] as string, ...truncationMetadata(candidate) }, defensiveTruncations };
     case "run_failed":
-      return {
+      return { event: {
         type: candidate.type,
         seq: candidate.seq,
         ts: candidate.ts,
         category: candidate["category"] as "agent_gave_up" | "agent_crashed" | "provider_error" | "internal",
-        message: candidate["message"] as string
-      };
+        message: candidate["message"] as string,
+        ...truncationMetadata(candidate)
+      }, defensiveTruncations };
     case "log":
-      return {
+      return { event: {
         type: candidate.type,
         seq: candidate.seq,
         ts: candidate.ts,
         level: candidate["level"] as "debug" | "info" | "warn" | "error",
-        message: candidate["message"] as string
-      };
+        message: candidate["message"] as string,
+        ...truncationMetadata(candidate)
+      }, defensiveTruncations };
   }
+}
+
+export function parseAdapterEventFrame(input: string): AdapterEvent {
+  return parseAdapterEventFrameDetailed(input).event;
+}
+
+function wireTruncation(event: AdapterEvent): Record<string, unknown> {
+  return "truncated" in event && event.truncated === true
+    ? { truncated: true, original_sha256: event.originalSha256 }
+    : {};
 }
 
 function toEventWire(event: AdapterEvent): JsonObject {
@@ -332,12 +453,13 @@ function toEventWire(event: AdapterEvent): JsonObject {
         status: event.status,
         stop_reason: event.stopReason,
         latency_ms: event.latencyMs,
-        text: event.text
+        text: event.text,
+        ...wireTruncation(event)
       };
     case "tool_call":
       return { ...base, call_id: event.callId, request_id: event.requestId, tool: event.tool, args: event.args };
     case "tool_result":
-      return { ...base, call_id: event.callId, status: event.status, result: event.result, duration_ms: event.durationMs };
+      return { ...base, call_id: event.callId, status: event.status, result: event.result, duration_ms: event.durationMs, ...wireTruncation(event) };
     case "usage":
       return {
         ...base,
@@ -349,18 +471,19 @@ function toEventWire(event: AdapterEvent): JsonObject {
         source: event.usage.source
       };
     case "text_output":
-      return { ...base, text: event.text };
+      return { ...base, text: event.text, ...wireTruncation(event) };
     case "run_completed":
-      return { ...base, summary: event.summary };
+      return { ...base, summary: event.summary, ...wireTruncation(event) };
     case "run_failed":
-      return { ...base, category: event.category, message: event.message };
+      return { ...base, category: event.category, message: event.message, ...wireTruncation(event) };
     case "log":
-      return { ...base, level: event.level, message: event.message };
+      return { ...base, level: event.level, message: event.message, ...wireTruncation(event) };
   }
 }
 
 export function encodeAdapterEventFrame(event: AdapterEvent): string {
   const wire = toEventWire(event);
+  normalizeEventStrings(wire);
   if (!validateEvent(wire)) {
     return failedSchema("adapter event", validateEvent);
   }

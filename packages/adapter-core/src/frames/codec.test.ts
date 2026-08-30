@@ -103,6 +103,16 @@ describe("assay-adapter/1 event frames", () => {
     }
   });
 
+  it("requires synthetic usage to report an explicit zero micro-USD cost", () => {
+    const value = JSON.parse(fixture("accept", "usage.json")) as Record<string, unknown>;
+    delete value["cost_usd_micros"];
+    expectCategory(() => parseAdapterEventFrame(JSON.stringify(value)), "adapter_protocol_error");
+    expectCategory(
+      () => parseAdapterEventFrame(JSON.stringify({ ...value, cost_usd_micros: 1 })),
+      "adapter_protocol_error"
+    );
+  });
+
   it("maps the exact Architecture section 6 snake_case frames to frozen camelCase types", () => {
     expect(parseAdapterEventFrame(fixture("accept", "model-request.json"))).toMatchObject({
       type: "model_request",
@@ -133,6 +143,30 @@ describe("assay-adapter/1 event frames", () => {
       () => parseAdapterEventFrame(fixture("reject", "truncation-incomplete.json")),
       "adapter_protocol_error"
     );
+  });
+
+  it.each([
+    ["model-response.json", "text"],
+    ["tool-result.json", "result"],
+    ["text-output.json", "text"],
+    ["run-completed.json", "summary"],
+    ["run-failed.json", "message"],
+    ["log.json", "message"]
+  ] as const)("publishes paired truncation metadata for %s", (name, payloadField) => {
+    const value = JSON.parse(fixture("accept", name)) as Record<string, unknown>;
+    expect(typeof value[payloadField]).toBe("string");
+    value["truncated"] = true;
+    value["original_sha256"] = "b".repeat(64);
+    const parsed = parseAdapterEventFrame(JSON.stringify(value));
+    expect(parsed).toMatchObject({ truncated: true, originalSha256: "b".repeat(64) });
+    expect(parseAdapterEventFrame(encodeAdapterEventFrame(parsed).slice(0, -1))).toEqual(parsed);
+  });
+
+  it("rejects truncation metadata on non-payload frame variants", () => {
+    const value = JSON.parse(fixture("accept", "session-started.json")) as Record<string, unknown>;
+    value["truncated"] = true;
+    value["original_sha256"] = "b".repeat(64);
+    expectCategory(() => parseAdapterEventFrame(JSON.stringify(value)), "adapter_protocol_error");
   });
 
   it("measures the universal string limit in UTF-8 bytes and defensively truncates payloads", () => {

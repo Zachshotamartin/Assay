@@ -52,6 +52,10 @@ interface AdapterEventBase<T extends string> {
   readonly ts: string;
 }
 
+export type AdapterTruncationMetadata =
+  | { readonly truncated?: never; readonly originalSha256?: never }
+  | { readonly truncated: true; readonly originalSha256: string };
+
 export interface UsageReport {
   readonly requestId: string;
   readonly promptTokens: number;
@@ -70,7 +74,7 @@ export type AdapterEvent =
       readonly messageCount: number;
       readonly inputSummarySha256: string;
     })
-  | (AdapterEventBase<"model_response"> & {
+  | (AdapterEventBase<"model_response"> & AdapterTruncationMetadata & {
       readonly requestId: string;
       readonly status: "ok" | "provider_error" | "timeout";
       readonly stopReason:
@@ -89,20 +93,20 @@ export type AdapterEvent =
       readonly tool: string;
       readonly args: Readonly<Record<string, unknown>>;
     })
-  | (AdapterEventBase<"tool_result"> & {
+  | (AdapterEventBase<"tool_result"> & AdapterTruncationMetadata & {
       readonly callId: string;
       readonly status: "ok" | "error" | "timeout";
       readonly result: string;
       readonly durationMs: number;
     })
   | (AdapterEventBase<"usage"> & { readonly usage: UsageReport })
-  | (AdapterEventBase<"text_output"> & { readonly text: string })
-  | (AdapterEventBase<"run_completed"> & { readonly summary: string })
-  | (AdapterEventBase<"run_failed"> & {
+  | (AdapterEventBase<"text_output"> & AdapterTruncationMetadata & { readonly text: string })
+  | (AdapterEventBase<"run_completed"> & AdapterTruncationMetadata & { readonly summary: string })
+  | (AdapterEventBase<"run_failed"> & AdapterTruncationMetadata & {
       readonly category: "agent_gave_up" | "agent_crashed" | "provider_error" | "internal";
       readonly message: string;
     })
-  | (AdapterEventBase<"log"> & {
+  | (AdapterEventBase<"log"> & AdapterTruncationMetadata & {
       readonly level: "debug" | "info" | "warn" | "error";
       readonly message: string;
     });

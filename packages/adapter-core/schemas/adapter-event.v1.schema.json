@@ -19,10 +19,11 @@
       "type": "object",
       "required": ["type", "seq", "ts"],
       "properties": {
-        "type": { "type": "string" },
+        "type": { "type": "string", "maxLength": 262144 },
         "seq": { "type": "integer", "minimum": 1 },
         "ts": {
           "type": "string",
+          "maxLength": 262144,
           "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{3}Z$"
         }
       }
@@ -32,9 +33,9 @@
       "additionalProperties": false,
       "required": ["provider", "model", "family"],
       "properties": {
-        "provider": { "type": "string" },
-        "model": { "type": "string" },
-        "family": { "type": "string" }
+        "provider": { "type": "string", "maxLength": 262144 },
+        "model": { "type": "string", "maxLength": 262144 },
+        "family": { "type": "string", "maxLength": 262144 }
       }
     },
     "sessionStarted": {
@@ -48,7 +49,7 @@
             "type": { "const": "session_started" },
             "seq": { "type": "integer", "minimum": 1 },
             "ts": { "type": "string" },
-            "session_id": { "type": "string" }
+            "session_id": { "type": "string", "maxLength": 262144 }
           }
         }
       ]
@@ -67,7 +68,7 @@
             "type": { "const": "model_request" },
             "seq": { "type": "integer", "minimum": 1 },
             "ts": { "type": "string" },
-            "request_id": { "type": "string" },
+            "request_id": { "type": "string", "maxLength": 262144 },
             "turn": { "type": "integer", "minimum": 0 },
             "model": { "$ref": "#/$defs/model" },
             "message_count": { "type": "integer", "minimum": 0 },
@@ -87,7 +88,7 @@
             "type": { "const": "model_response" },
             "seq": { "type": "integer", "minimum": 1 },
             "ts": { "type": "string" },
-            "request_id": { "type": "string" },
+            "request_id": { "type": "string", "maxLength": 262144 },
             "status": { "enum": ["ok", "provider_error", "timeout"] },
             "stop_reason": {
               "oneOf": [
@@ -98,10 +99,16 @@
             "latency_ms": { "type": "integer", "minimum": 0 },
             "text": {
               "oneOf": [
-                { "type": "string" },
+                { "type": "string", "maxLength": 262144 },
                 { "type": "null" }
               ]
-            }
+            },
+            "truncated": { "const": true },
+            "original_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+          },
+          "dependentRequired": {
+            "truncated": ["original_sha256"],
+            "original_sha256": ["truncated"]
           },
           "allOf": [
             {
@@ -114,6 +121,16 @@
               },
               "else": {
                 "properties": { "stop_reason": { "type": "null" } }
+              }
+            },
+            {
+              "if": {
+                "required": ["truncated"],
+                "properties": { "truncated": true }
+              },
+              "then": {
+                "required": ["text"],
+                "properties": { "text": { "type": "string" } }
               }
             }
           ]
@@ -131,10 +148,10 @@
             "type": { "const": "tool_call" },
             "seq": { "type": "integer", "minimum": 1 },
             "ts": { "type": "string" },
-            "call_id": { "type": "string" },
-            "request_id": { "type": "string" },
-            "tool": { "type": "string" },
-            "args": { "type": "object" }
+            "call_id": { "type": "string", "maxLength": 262144 },
+            "request_id": { "type": "string", "maxLength": 262144 },
+            "tool": { "type": "string", "maxLength": 262144 },
+            "args": { "$ref": "#/$defs/boundedObject" }
           }
         }
       ]
@@ -150,10 +167,16 @@
             "type": { "const": "tool_result" },
             "seq": { "type": "integer", "minimum": 1 },
             "ts": { "type": "string" },
-            "call_id": { "type": "string" },
+            "call_id": { "type": "string", "maxLength": 262144 },
             "status": { "enum": ["ok", "error", "timeout"] },
-            "result": { "type": "string" },
-            "duration_ms": { "type": "integer", "minimum": 0 }
+            "result": { "type": "string", "maxLength": 262144 },
+            "duration_ms": { "type": "integer", "minimum": 0 },
+            "truncated": { "const": true },
+            "original_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+          },
+          "dependentRequired": {
+            "truncated": ["original_sha256"],
+            "original_sha256": ["truncated"]
           }
         }
       ]
@@ -172,13 +195,25 @@
             "type": { "const": "usage" },
             "seq": { "type": "integer", "minimum": 1 },
             "ts": { "type": "string" },
-            "request_id": { "type": "string" },
+            "request_id": { "type": "string", "maxLength": 262144 },
             "prompt_tokens": { "type": "integer", "minimum": 0 },
             "completion_tokens": { "type": "integer", "minimum": 0 },
             "total_tokens": { "type": "integer", "minimum": 0 },
             "cost_usd_micros": { "type": "integer", "minimum": 0 },
             "source": { "enum": ["provider", "synthetic"] }
-          }
+          },
+          "allOf": [
+            {
+              "if": {
+                "required": ["source"],
+                "properties": { "source": { "const": "synthetic" } }
+              },
+              "then": {
+                "required": ["cost_usd_micros"],
+                "properties": { "cost_usd_micros": { "const": 0 } }
+              }
+            }
+          ]
         }
       ]
     },
@@ -193,7 +228,13 @@
             "type": { "const": "text_output" },
             "seq": { "type": "integer", "minimum": 1 },
             "ts": { "type": "string" },
-            "text": { "type": "string" }
+            "text": { "type": "string", "maxLength": 262144 },
+            "truncated": { "const": true },
+            "original_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+          },
+          "dependentRequired": {
+            "truncated": ["original_sha256"],
+            "original_sha256": ["truncated"]
           }
         }
       ]
@@ -209,7 +250,13 @@
             "type": { "const": "run_completed" },
             "seq": { "type": "integer", "minimum": 1 },
             "ts": { "type": "string" },
-            "summary": { "type": "string" }
+            "summary": { "type": "string", "maxLength": 262144 },
+            "truncated": { "const": true },
+            "original_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+          },
+          "dependentRequired": {
+            "truncated": ["original_sha256"],
+            "original_sha256": ["truncated"]
           }
         }
       ]
@@ -226,10 +273,31 @@
             "seq": { "type": "integer", "minimum": 1 },
             "ts": { "type": "string" },
             "category": { "enum": ["agent_gave_up", "agent_crashed", "provider_error", "internal"] },
-            "message": { "type": "string" }
+            "message": { "type": "string", "maxLength": 262144 },
+            "truncated": { "const": true },
+            "original_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+          },
+          "dependentRequired": {
+            "truncated": ["original_sha256"],
+            "original_sha256": ["truncated"]
           }
         }
       ]
+    },
+    "boundedValue": {
+      "oneOf": [
+        { "type": "null" },
+        { "type": "boolean" },
+        { "type": "number" },
+        { "type": "string", "maxLength": 262144 },
+        { "type": "array", "items": { "$ref": "#/$defs/boundedValue" } },
+        { "$ref": "#/$defs/boundedObject" }
+      ]
+    },
+    "boundedObject": {
+      "type": "object",
+      "propertyNames": { "maxLength": 262144 },
+      "additionalProperties": { "$ref": "#/$defs/boundedValue" }
     },
     "log": {
       "allOf": [
@@ -243,7 +311,13 @@
             "seq": { "type": "integer", "minimum": 1 },
             "ts": { "type": "string" },
             "level": { "enum": ["debug", "info", "warn", "error"] },
-            "message": { "type": "string" }
+            "message": { "type": "string", "maxLength": 262144 },
+            "truncated": { "const": true },
+            "original_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+          },
+          "dependentRequired": {
+            "truncated": ["original_sha256"],
+            "original_sha256": ["truncated"]
           }
         }
       ]

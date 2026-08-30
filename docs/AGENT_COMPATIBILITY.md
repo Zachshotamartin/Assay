@@ -111,9 +111,13 @@ also carry ts, an RFC 3339 UTC timestamp with exactly millisecond precision.
 Sequence, not timestamp, is ordering authority. The handshake intentionally
 has no ts field.
 
-A string field over 262,144 bytes must be truncated by the adapter and
-identified with truncated: true plus original_sha256. The harness applies the
-same bound defensively and records its action in the redaction manifest.
+A payload string over 262,144 bytes must be truncated by the adapter and
+identified on that frame with truncated: true plus original_sha256. This
+metadata applies to model-response text, tool-result output, text output,
+terminal summary/message, and log message. Identity, pairing, catalog, and
+model strings cannot be safely shortened and are rejected at the same byte
+bound. The harness applies the payload bound defensively, computes the hash,
+and records its action in the redaction manifest.
 
 ### 2.3 Handshake
 
