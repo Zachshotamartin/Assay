@@ -1,15 +1,12 @@
 import { spawn, type ChildProcess } from "node:child_process";
-import { execFile } from "node:child_process";
 import { mkdir, mkdtemp, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { promisify } from "node:util";
 import { DatabaseSync } from "node:sqlite";
 
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 
-const executeFile = promisify(execFile);
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
 const packagedCli = join(repositoryRoot, "apps", "cli", "dist", "bin.js");
 const roots: string[] = [];
@@ -26,12 +23,15 @@ interface RunningCli {
 }
 
 beforeAll(async () => {
-  await executeFile("npm", ["run", "build"], {
-    cwd: repositoryRoot,
-    maxBuffer: 16 * 1024 * 1024
-  });
-  await stat(packagedCli);
-}, 120_000);
+  try {
+    await stat(packagedCli);
+  } catch (cause) {
+    throw new Error(
+      "packaged CLI evidence requires `npm run build` before the e2e suite",
+      { cause }
+    );
+  }
+});
 
 afterEach(async () => {
   await Promise.all(roots.splice(0).map((root) => rm(root, { recursive: true, force: true })));

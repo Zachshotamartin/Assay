@@ -27,7 +27,7 @@
     "build": "npm run clean:build && tsc -b --force --pretty false && node esbuild.config.mjs",
     "typecheck": "tsc -b --pretty false && tsc -p tsconfig.tests.json --noEmit --pretty false",
     "test": "vitest run --workspace vitest.workspace.ts --passWithNoTests",
-    "test:unit": "vitest run --workspace vitest.workspace.ts --passWithNoTests",
+    "test:unit": "vitest run --workspace vitest.workspace.ts --exclude apps/cli/src/subprocess.e2e.test.ts --passWithNoTests",
     "test:property": "vitest run --workspace vitest.workspace.ts --passWithNoTests",
     "test:integration": "vitest run --workspace vitest.workspace.ts --passWithNoTests",
     "test:store": "vitest run --workspace vitest.workspace.ts packages/run-store --passWithNoTests",
@@ -41,7 +41,7 @@
     "check:architecture": "npm run lint:architecture",
     "check:docs": "npm run lint:docs",
     "lint": "npm run lint:docs && npm run lint:architecture",
-    "verify": "npm run typecheck && npm run lint && npm test && npm run build"
+    "verify": "npm run typecheck && npm run lint && npm run build && npm test"
   },
   "devDependencies": {
     "@types/node": "22.20.1",
