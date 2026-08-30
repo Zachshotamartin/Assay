@@ -1,0 +1,7 @@
+format_version: "1.0"
+id: unknown-field-suite
+title: Unknown suite field
+include: [tasks/*.task.yaml]
+variants:
+  baseline: { adapter: simulated, model: synthetic/deterministic-1 }
+surprise: rejected

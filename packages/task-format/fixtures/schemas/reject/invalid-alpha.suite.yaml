@@ -1,0 +1,11 @@
+format_version: "1.0"
+id: invalid-alpha
+title: Alpha is fixed
+include: [tasks/*.task.yaml]
+variants:
+  baseline: { adapter: simulated, model: synthetic/deterministic-1 }
+  candidate: { adapter: simulated, model: synthetic/deterministic-2 }
+comparison:
+  baseline_variant: baseline
+  candidate_variant: candidate
+  alpha: 0.1

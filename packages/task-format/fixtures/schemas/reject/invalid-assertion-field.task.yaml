@@ -1,0 +1,12 @@
+format_version: "1.0"
+id: bad-assertion
+title: Unknown assertion field
+fixture: { path: ./repo }
+prompt: Fix it.
+toolset: { catalog: simulated/1 }
+sandbox:
+  image: example.invalid/fixture@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+assertions:
+  - type: file_exists
+    path: result.txt
+    shell: true

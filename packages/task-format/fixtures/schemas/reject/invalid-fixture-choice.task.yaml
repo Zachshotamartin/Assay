@@ -1,0 +1,13 @@
+format_version: "1.0"
+id: fixture-choice
+title: Both fixture forms are invalid
+fixture:
+  path: ./repo
+  archive:
+    ref: ./repo.tar
+    sha256: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+prompt: Fix it.
+toolset: { catalog: simulated/1 }
+sandbox:
+  image: example.invalid/fixture@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+assertions: [{ type: exit_code }]

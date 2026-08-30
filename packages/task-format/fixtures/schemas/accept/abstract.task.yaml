@@ -1,0 +1,5 @@
+format_version: "1.0"
+id: abstract-base
+abstract: true
+tags: [shared]
+description: Abstract tasks may omit concrete execution fields.
