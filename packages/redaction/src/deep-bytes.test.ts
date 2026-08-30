@@ -163,6 +163,25 @@ describe("strict UTF-8 and fail-closed behavior", () => {
     expect(detectorCalled).toBe(false);
   });
 
+  it("uses one immutable option snapshot across byte decoding and text scanning", () => {
+    const candidate = "ABCDEFGHIJKLMNOPQRST";
+    let reads = 0;
+    const options = Object.defineProperty({}, "knownHashes", {
+      enumerable: true,
+      get: () => {
+        reads += 1;
+        return reads === 1 ? new Set<string>() : new Set([candidate]);
+      }
+    });
+
+    const result = redactUtf8Bytes(new TextEncoder().encode(candidate), options);
+
+    expect(new TextDecoder().decode(result.value)).toBe(
+      `[REDACTED:entropy:${candidate.length}]`
+    );
+    expect(reads).toBe(1);
+  });
+
   it("converts detector failures to a stable redaction_failed error without leaking text", () => {
     const canary = `must-not-escape-${OPENAI_KEY}`;
     const stageHook = (_stage: RedactionStage): void => {
