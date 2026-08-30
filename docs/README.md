@@ -91,10 +91,11 @@ Read these documents first and in this order:
     Nothing in that register may be implemented ahead of its trigger.
 
 14. [Decision records](decisions/) contain the accepted ADRs, ADR-0001
-    through ADR-0011, which fix the toolchain, name and scope boundary,
+    through ADR-0012, which fix the toolchain, name and scope boundary,
     task format, sandbox technology, adapter contract, statistical method,
     judge policy, trace storage, cost accounting, redaction, and viewer
-    stack. Reversals become new ADRs.
+    stack, and deterministic hashing of fractional task values. Reversals
+    become new ADRs.
 
 ## Conflict and Status Rules
 
