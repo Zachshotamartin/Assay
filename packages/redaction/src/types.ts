@@ -1,4 +1,4 @@
-export const REDACTION_RULESET_VERSION = "redaction-ruleset/1" as const;
+export const REDACTION_RULESET_VERSION = "2026.08" as const;
 export const DEFAULT_MAX_REDACTION_INPUT_BYTES = 1_048_576;
 
 export type RedactionStage = "patterns" | "entropy";
