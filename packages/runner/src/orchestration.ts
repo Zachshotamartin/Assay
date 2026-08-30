@@ -154,15 +154,15 @@ export async function executeTaskRun<TPlan, TWorkspace, TAgent, TCollection, TEv
     }
 
     try {
+      await cleanup();
+    } catch {
+      // Preserve the original terminal category while still making one cleanup attempt.
+    }
+    try {
       await persistSettlement();
     } catch {
       // A failed store attempt is already represented by the terminal lifecycle.
       // Recovery owns any non-durable record; retrying here could duplicate effects.
-    }
-    try {
-      await cleanup();
-    } catch {
-      // Preserve the original terminal category while still making one cleanup attempt.
     }
   }
 
