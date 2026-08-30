@@ -129,6 +129,18 @@ async function waitForPath(path: string): Promise<void> {
 }
 
 describe("R1 packaged CLI process contract", () => {
+  it("keeps help and version cold from runtime, adapter, store, and SQLite modules", async () => {
+    const root = await temporaryProject();
+    for (const args of [["--help"], ["--version"]] as const) {
+      const result = await runCli(root, args, { NODE_DEBUG: "esm" });
+
+      expect(result.code, result.stderr).toBe(0);
+      expect(result.stderr).not.toMatch(
+        /(?:adapter-simulated|packages\/run-store|packages\/assertions|node:sqlite|esbuild)/iu
+      );
+    }
+  });
+
   it("reaches documented process exit 0", async () => {
     const root = await temporaryProject();
     await writeValidProject(root);
