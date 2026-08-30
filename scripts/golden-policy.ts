@@ -58,7 +58,7 @@ export function assertGoldenReview(paths: readonly string[], reviewText: string)
 }
 
 function diffBase(): string {
-  const configured = process.env["ASSAY_GOLDEN_BASE_SHA"]?.trim();
+  const configured = process.env["GOLDEN_POLICY_BASE_SHA"]?.trim();
   if (configured !== undefined && /^[0-9a-f]{7,40}$/u.test(configured)) {
     return configured;
   }
@@ -66,7 +66,7 @@ function diffBase(): string {
 }
 
 function changedFilesFromGit(): readonly string[] {
-  const explicit = process.env["ASSAY_CHANGED_FILES"];
+  const explicit = process.env["GOLDEN_POLICY_CHANGED_FILES"];
   if (explicit !== undefined) {
     return explicit.split(/\r?\n/u).filter((entry) => entry.trim() !== "");
   }
@@ -88,7 +88,7 @@ function main(): void {
     throw new Error("usage: golden-policy check");
   }
   const files = changedFilesFromGit();
-  assertGoldenReview(files, process.env["ASSAY_PR_BODY"] ?? "");
+  assertGoldenReview(files, process.env["GOLDEN_POLICY_PR_BODY"] ?? "");
   process.stdout.write(`golden review policy: ok (${changedGoldenFiles(files).length} changed)\n`);
 }
 
