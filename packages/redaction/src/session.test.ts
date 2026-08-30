@@ -113,6 +113,53 @@ describe("logical JSON record sessions", () => {
     expect(results[1]?.manifest.applied[0]?.location).toBe("/text");
   });
 
+  it("prefers a complete cross-record provider match when its first fragment already matches", () => {
+    const continuation = "CONTINUATION";
+    const session = createJsonRedactionSession();
+    session.write({ text: OPENAI_KEY });
+    session.write({ text: continuation });
+
+    const results = session.finish();
+    expect(results[0]?.value).toEqual({
+      text: `[REDACTED:provider-openai:${OPENAI_KEY.length}]`
+    });
+    expect(results[1]?.value).toEqual({
+      text: `[REDACTED:provider-openai:${continuation.length}]`
+    });
+  });
+
+  it("prefers a complete cross-record entropy match over a qualifying prefix", () => {
+    const qualifyingPrefix = "ABCDEFGHIJKLMNOPQRSTUVWX";
+    const continuation = "YZ012";
+    const session = createJsonRedactionSession();
+    session.write({ text: qualifyingPrefix });
+    session.write({ text: continuation });
+
+    const results = session.finish();
+    expect(results[0]?.value).toEqual({
+      text: `[REDACTED:entropy:${qualifyingPrefix.length}]`
+    });
+    expect(results[1]?.value).toEqual({
+      text: `[REDACTED:entropy:${continuation.length}]`
+    });
+  });
+
+  it("detects a provider key split across different fields in adjacent records", () => {
+    const firstSecretFragment = "sk-proj-SYNTHETIC0123";
+    const secondSecretFragment = "456789abcdefghijklmnopqrstuv";
+    const session = createJsonRedactionSession();
+    session.write({ delta: firstSecretFragment });
+    session.write({ result: secondSecretFragment });
+
+    const results = session.finish();
+    expect(results[0]?.value).toEqual({
+      delta: `[REDACTED:provider-openai:${firstSecretFragment.length}]`
+    });
+    expect(results[1]?.value).toEqual({
+      result: `[REDACTED:provider-openai:${secondSecretFragment.length}]`
+    });
+  });
+
   it("redacts an entropy token split across adjacent string fields", () => {
     const firstFragment = "ABCDEFGH";
     const secondFragment = "IJKLMNOPQRST";
@@ -134,7 +181,7 @@ describe("logical JSON record sessions", () => {
 
   it("preserves record order and runs ordinary deep redaction in the same pass", () => {
     const session = createJsonRedactionSession();
-    session.write({ seq: 1, nested: { output: OPENAI_KEY } });
+    session.write({ seq: 1, nested: { output: `${OPENAI_KEY} ` } });
     session.write({ seq: 2, nested: { output: "safe" } });
 
     const results = session.finish();

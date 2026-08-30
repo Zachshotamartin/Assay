@@ -97,6 +97,12 @@ describe("versioned pattern rules", () => {
       AWS_SECRET,
       "aws-secret-access-key"
     );
+    const lowEntropySecret = "A".repeat(40);
+    expectSinglePattern(
+      `{"SecretAccessKey":"${lowEntropySecret}"}`,
+      lowEntropySecret,
+      "aws-secret-access-key"
+    );
   });
 
   it("redacts GCP service-account markers and credential fields", () => {
@@ -114,12 +120,31 @@ describe("versioned pattern rules", () => {
       AZURE_ACCOUNT_KEY,
       "azure-connection-string"
     );
+    expectSinglePattern(
+      "Endpoint=https://synthetic.azconfig.io;Id=synthetic;Secret=low-entropy-secret",
+      "low-entropy-secret",
+      "azure-connection-string"
+    );
+    expectSinglePattern(
+      "Server=tcp:synthetic.database.windows.net;User ID=test;Password=plain-password",
+      "plain-password",
+      "azure-connection-string"
+    );
   });
 
   it("redacts the complete URL userinfo component", () => {
     const userinfo = "synthetic-user:p%40ssword";
     expectSinglePattern(
       `request https://${userinfo}@example.test/private`,
+      userinfo,
+      "url-userinfo"
+    );
+  });
+
+  it("redacts URL userinfo inside JSON-escaped text", () => {
+    const userinfo = "synthetic-user:plain-password";
+    expectSinglePattern(
+      `{"url":"https:\\/\\/${userinfo}@example.test/private"}`,
       userinfo,
       "url-userinfo"
     );
