@@ -371,11 +371,29 @@ describe("R1.13 validate and run integration", () => {
     expect(stored.taskRuns.filter((record) => record["taskId"] === "basic-task")).toHaveLength(2);
     expect(stored.taskRuns.filter((record) => record["taskId"] === "fixed-task")).toHaveLength(3);
     const runPlanned = stored.events.find((record) => record["type"] === "RunPlanned")!;
-    const durablePlan = (runPlanned["payload"] as {
+    const durablePayload = runPlanned["payload"] as {
       readonly tasks: readonly Readonly<Record<string, unknown>>[];
-    }).tasks;
+      readonly taskPolicies: readonly Readonly<Record<string, unknown>>[];
+    };
+    const durablePlan = durablePayload.tasks;
     expect(stored.taskRuns).toHaveLength(durablePlan.length);
     expect(durablePlan).toHaveLength(plan.tasks.reduce((sum, task) => sum + task.repetitions, 0));
+    expect(durablePayload.taskPolicies).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        taskId: "basic-task",
+        repetitions: 2,
+        rootSeed: 11,
+        seedStrategy: "derived",
+        effectiveSeeds: derived.effectiveSeeds
+      }),
+      expect.objectContaining({
+        taskId: "fixed-task",
+        repetitions: 3,
+        rootSeed: 19,
+        seedStrategy: "fixed",
+        effectiveSeeds: fixed.effectiveSeeds
+      })
+    ]));
   });
 
   it("uses task counts before suite fallback and the built-in policy defaults", async () => {
