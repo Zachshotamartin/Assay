@@ -159,12 +159,13 @@ describe("single-parent task inheritance", () => {
       }
     }, ["/project/a.task.yaml", "/project/b.task.yaml", "/project/a.task.yaml"]]
   ] as const)("rejects a %s cycle and names its traversal chain", async (_name, entries, expectedChain) => {
-    const firstPath = Object.keys(entries)[0] as string;
+    const taskEntries = entries as unknown as Readonly<Record<string, TaskDocument>>;
+    const firstPath = Object.keys(taskEntries)[0] as string;
 
     try {
       await resolveTaskInheritance(
-        loaded(firstPath, entries[firstPath] as TaskDocument),
-        inheritanceOptions(entries)
+        loaded(firstPath, taskEntries[firstPath]!),
+        inheritanceOptions(taskEntries)
       );
       throw new Error("expected cycle rejection");
     } catch (error) {

@@ -80,6 +80,7 @@ describe("suite resolution and canonical content hashes", () => {
     };
     const resolveWith = (matches: readonly string[]) => resolveSuite(suite, {
       projectRoot: "/project",
+      realpath: async (path) => path,
       expandInclude: async () => matches,
       loadTask: async (path) => tasks[path]!
     });
@@ -107,6 +108,7 @@ describe("suite resolution and canonical content hashes", () => {
 
     await expect(resolveSuite(suite, {
       projectRoot: "/project",
+      realpath: async (path) => path,
       expandInclude: async () => paths,
       loadTask: async (path) => loadedTask(path, concreteTask("duplicate-task"))
     })).rejects.toMatchObject({
@@ -131,6 +133,7 @@ describe("suite resolution and canonical content hashes", () => {
 
     await expect(resolveSuite(baseSuite, {
       projectRoot: "/project",
+      realpath: async (path) => path,
       expandInclude: async () => [abstract.path],
       loadTask: async () => abstract
     })).rejects.toMatchObject({ code: "suite_invalid/empty" });
@@ -141,6 +144,7 @@ describe("suite resolution and canonical content hashes", () => {
     };
     await expect(resolveSuite(directSuite, {
       projectRoot: "/project",
+      realpath: async (path) => path,
       expandInclude: async () => [abstract.path],
       loadTask: async () => abstract
     })).rejects.toMatchObject({ code: "suite_invalid/abstract-direct" });
