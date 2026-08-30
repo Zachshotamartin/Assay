@@ -1,10 +1,18 @@
-import { rm } from "node:fs/promises";
+import { readdir, rm } from "node:fs/promises";
 
-const generatedDirectories = [
-  new URL("../apps/cli/dist/", import.meta.url),
-  new URL("../packages/contracts/dist/", import.meta.url),
-  new URL("../dist/scripts/", import.meta.url)
-];
+const workspaceParents = [
+  new URL("../apps/", import.meta.url),
+  new URL("../packages/", import.meta.url)
+] as const;
+
+const generatedDirectories = [new URL("../dist/scripts/", import.meta.url)];
+for (const parent of workspaceParents) {
+  for (const entry of await readdir(parent, { withFileTypes: true })) {
+    if (entry.isDirectory()) {
+      generatedDirectories.push(new URL(`./${entry.name}/dist/`, parent));
+    }
+  }
+}
 
 await Promise.all(
   generatedDirectories.map((directory) => rm(directory, { recursive: true, force: true }))

@@ -4,6 +4,9 @@
     { "path": "scripts" },
     { "path": "packages/contracts" },
     { "path": "packages/adapter-core" },
+    { "path": "packages/assertions" },
+    { "path": "packages/run-store" },
+    { "path": "packages/runner" },
     { "path": "packages/task-format" },
     { "path": "apps/cli" }
   ]
