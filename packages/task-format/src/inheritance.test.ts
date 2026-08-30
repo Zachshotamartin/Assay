@@ -92,6 +92,19 @@ describe("single-parent task inheritance", () => {
     );
 
     expect(result.inheritanceChain).toEqual([parentPath, childPath]);
+    expect(result.fieldOrigins).toMatchObject({
+      format_version: childPath,
+      id: childPath,
+      title: childPath,
+      description: childPath,
+      fixture: childPath,
+      prompt: childPath,
+      toolset: childPath,
+      sandbox: childPath,
+      assertions: childPath,
+      budgets: childPath,
+      run_policy: parentPath
+    });
     expect(result.document).toMatchObject({
       format_version: "1.0",
       id: "child-task",
@@ -115,6 +128,28 @@ describe("single-parent task inheritance", () => {
     });
     expect(result.document).not.toHaveProperty("extends");
     expect(result.document).not.toHaveProperty("abstract");
+  });
+
+  it("preserves the declaring file for inherited relative-path fields", async () => {
+    const childPath = "/project/children/child.task.yaml";
+    const parentPath = "/project/parents/parent.task.yaml";
+    const child: TaskDocument = {
+      format_version: "1.0",
+      id: "child-task",
+      title: "Child",
+      extends: "../parents/parent.task.yaml"
+    };
+
+    const result = await resolveTaskInheritance(
+      loaded(childPath, child),
+      inheritanceOptions({ [parentPath]: abstractParent })
+    );
+
+    expect(result.fieldOrigins.fixture).toBe(parentPath);
+    expect(result.fieldOrigins.prompt).toBe(parentPath);
+    expect(result.fieldOrigins.assertions).toBe(parentPath);
+    expect(result.fieldOrigins.id).toBe(childPath);
+    expect(result.fieldOrigins.title).toBe(childPath);
   });
 
   it("honors the literal +append:tags operation and removes its control key", async () => {
