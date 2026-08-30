@@ -12,6 +12,7 @@ import {
   evaluateDeterministicAssertion,
   evaluateDeterministicAssertions,
   validateDeterministicAssertion,
+  validateJsonSchemaAssertion,
   type AssertionCommandRunner,
   type AssertionExecutionContext,
   type CommandExecutionRequest,
@@ -246,6 +247,35 @@ describe("deterministic assertion engines", () => {
     expect(Array.isArray(fail.observed)).toBe(true);
     expect((fail.observed as readonly unknown[]).length).toBeLessThanOrEqual(5);
     expect(error).toMatchObject({ verdict: "error", errorCategory: "assertion_error" });
+  });
+
+  it("precompiles local JSON Schemas during validation without evaluating a target", async () => {
+    const project = await temporaryDirectory("assay-assert-json-preflight-");
+    await mkdir(join(project, "schemas"));
+    await writeFile(join(project, "schemas", "valid.json"), JSON.stringify({
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object"
+    }), "utf8");
+    await writeFile(join(project, "schemas", "remote.json"), JSON.stringify({
+      "$ref": "https://example.invalid/remote.json"
+    }), "utf8");
+    await writeFile(join(project, "schemas", "malformed.json"), "{", "utf8");
+
+    await expect(validateJsonSchemaAssertion({
+      type: "json_schema",
+      path: "result.json",
+      schema: "schemas/valid.json"
+    }, project)).resolves.toBeUndefined();
+    await expect(validateJsonSchemaAssertion({
+      type: "json_schema",
+      path: "result.json",
+      schema: "schemas/remote.json"
+    }, project)).rejects.toMatchObject({ category: "task_invalid" });
+    await expect(validateJsonSchemaAssertion({
+      type: "json_schema",
+      path: "result.json",
+      schema: "schemas/malformed.json"
+    }, project)).rejects.toMatchObject({ category: "task_invalid" });
   });
 
   it("evaluates command_output matchers independently of exit status", async () => {
