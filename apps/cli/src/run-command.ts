@@ -611,7 +611,7 @@ async function evaluateAssertions(
         fixtureRoot: evidence.workspace.fixtureRoot,
         projectRoot: runtime.projectRoot,
         sandboxWorkdir: "/workspace",
-        agentExitCode: evidence.collection.result.status === "completed" ? 0 : 1,
+        agentExitCode: evidence.collection.result.exit.code,
         clock: runtime.clock,
         commandRunner
       }, signal));
@@ -654,8 +654,7 @@ async function evaluateAssertions(
       "assertion_error: one or more assertions could not be evaluated; redacted evidence will persist; inspect the assertion result and fix the checker or command"
     );
   }
-  return evidence.collection.result.status === "failed" ||
-    evidence.assertionResults.some((result) => result.verdict === "fail")
+  return evidence.assertionResults.some((result) => result.verdict === "fail")
     ? "fail"
     : "pass";
 }
@@ -682,14 +681,21 @@ function assayEventsForTask(
   plan: PlannedTaskRun,
   evidence: TaskEvidence | undefined,
   lifecycle: TaskRunLifecycle,
+  isolation: "isolated" | "network_allowlisted" | "unsafe_host",
   timestamp: string
 ): readonly AssayEvent[] {
   const events: AssayEvent[] = [];
   if (evidence !== undefined) {
-    events.push(
-      event("FixtureMaterialized", runId, timestamp, { fixtureKind: plan.task.fixture.kind }, plan.taskRunId),
-      event("SandboxStarted", runId, timestamp, { isolation: "unsafe_host" }, plan.taskRunId)
-    );
+    events.push(event(
+      "FixtureMaterialized",
+      runId,
+      timestamp,
+      { fixtureKind: plan.task.fixture.kind },
+      plan.taskRunId
+    ));
+    if (isolation !== "unsafe_host") {
+      events.push(event("SandboxStarted", runId, timestamp, { isolation }, plan.taskRunId));
+    }
     if (evidence.collection.result.descriptor !== null) {
       events.push(event("AdapterHandshake", runId, timestamp, {
         descriptor: evidence.collection.result.descriptor
@@ -714,9 +720,6 @@ function assayEventsForTask(
       events.push(event("AssertionEvaluated", runId, timestamp, { result }, plan.taskRunId));
     }
   }
-  if (evidence !== undefined) {
-    events.push(event("SandboxDestroyed", runId, timestamp, { isolation: "unsafe_host" }, plan.taskRunId));
-  }
   if (lifecycle.state === "scored") {
     events.push(event("TaskRunCompleted", runId, timestamp, {
       outcome: lifecycle.outcome,
@@ -726,6 +729,9 @@ function assayEventsForTask(
       seedStrategy: plan.seedStrategy,
       effectiveSeed: plan.seed
     }, plan.taskRunId));
+  }
+  if (evidence !== undefined && isolation !== "unsafe_host") {
+    events.push(event("SandboxDestroyed", runId, timestamp, { isolation }, plan.taskRunId));
   }
   return events;
 }
@@ -1027,7 +1033,7 @@ export async function executeRunCommand(
           await appendEventBatch(
             store,
             runId,
-            assayEventsForTask(runId, plan, evidence, lifecycle, runtime.clock.wallTime()),
+            assayEventsForTask(runId, plan, evidence, lifecycle, "unsafe_host", runtime.clock.wallTime()),
             sequence
           );
         }
