@@ -173,6 +173,22 @@ describe("R1.12 store core", () => {
     await store.close();
   });
 
+  it("uses the configured store path relative to the project root", async () => {
+    const projectRoot = await temporaryProject();
+    const store = await openRunStore(storeOptions(projectRoot, {
+      storePath: "state/private-store"
+    }));
+
+    expect(await store.diagnostics()).toMatchObject({
+      databasePath: join(projectRoot, "state", "private-store", "assay.db"),
+      objectsPath: join(projectRoot, "state", "private-store", "objects")
+    });
+    await expect(stat(join(projectRoot, ".assay"))).rejects.toMatchObject({ code: "ENOENT" });
+    expect((await stat(join(projectRoot, "state", "private-store"))).mode & 0o777).toBe(0o700);
+
+    await store.close();
+  });
+
   it("STO-001 atomically appends canonical run, task-run, and event records", async () => {
     const projectRoot = await temporaryProject();
     const store = await openRunStore(storeOptions(projectRoot));
