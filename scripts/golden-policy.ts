@@ -59,7 +59,11 @@ export function assertGoldenReview(paths: readonly string[], reviewText: string)
 
 function diffBase(): string {
   const configured = process.env["GOLDEN_POLICY_BASE_SHA"]?.trim();
-  if (configured !== undefined && /^[0-9a-f]{7,40}$/u.test(configured)) {
+  if (
+    configured !== undefined &&
+    /^[0-9a-f]{7,40}$/u.test(configured) &&
+    !/^0+$/u.test(configured)
+  ) {
     return configured;
   }
   return "HEAD^";
