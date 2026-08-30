@@ -26,9 +26,9 @@ describe("R1 clean-clone reference fixture", () => {
 
     const task = runnable.tasks[0]!;
     const fixture = task.document["fixture"];
-    expect(fixture).toEqual({ path: "../../repos/reference" });
+    expect(fixture).toEqual({ path: "repo" });
     const fixtureOrigin = task.fieldOrigins["fixture"]!;
-    await expect(stat(resolve(fixtureOrigin, "..", "../../repos/reference/README.md")))
+    await expect(stat(resolve(fixtureOrigin, "..", "repo/README.md")))
       .resolves.toMatchObject({ size: expect.any(Number) });
   });
 });
