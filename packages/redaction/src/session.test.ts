@@ -179,6 +179,20 @@ describe("logical JSON record sessions", () => {
     });
   });
 
+  it("does not let a boundary match expose a structured cloud-secret suffix", () => {
+    const awsSecret = `${"A".repeat(20)}/${"B".repeat(19)}`;
+    const session = createJsonRedactionSession();
+    session.write({ prefix: "sk-proj-", SecretAccessKey: awsSecret });
+
+    const [result] = session.finish();
+    expect(result?.value).toEqual({
+      prefix: "sk-proj-",
+      SecretAccessKey: "[REDACTED:aws-secret-access-key:40]"
+    });
+    expect(JSON.stringify(result)).not.toContain(awsSecret);
+    expect(JSON.stringify(result)).not.toContain("BBBBBBBBBBBBBBBBBBB");
+  });
+
   it("detects a provider key split across different fields in adjacent records", () => {
     const firstSecretFragment = "sk-proj-SYNTHETIC0123";
     const secondSecretFragment = "456789abcdefghijklmnopqrstuv";
