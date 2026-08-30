@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 import { parse } from "yaml";
 
 const workflowPath = fileURLToPath(new URL("../.github/workflows/ci.yml", import.meta.url));
+const repositoryRoot = fileURLToPath(new URL("../", import.meta.url));
 
 interface WorkflowStep {
   readonly uses?: string;
@@ -105,5 +106,31 @@ describe("R1 CI workflow contract", () => {
     )).toBe(false);
     expect(value.jobs?.["e2e-simulated"]?.env?.["GOLDEN_POLICY_REVIEW_TEXT"])
       .toContain("github.event.head_commit.message");
+  });
+
+  it("builds packaged artifacts once before e2e and never races a nested clean build", async () => {
+    const packageJson = JSON.parse(
+      await readFile(`${repositoryRoot}package.json`, "utf8")
+    ) as { readonly scripts?: Readonly<Record<string, string>> };
+    const subprocessTest = await readFile(
+      `${repositoryRoot}apps/cli/src/subprocess.e2e.test.ts`,
+      "utf8"
+    );
+
+    expect(subprocessTest).not.toMatch(/npm["'], \["run", "build"\]/u);
+    expect(packageJson.scripts?.["test:unit"]).toContain(
+      "--exclude apps/cli/src/subprocess.e2e.test.ts"
+    );
+    expect(packageJson.scripts?.["verify"]).toBe(
+      "npm run typecheck && npm run lint && npm run build && npm test"
+    );
+
+    const value = await workflow();
+    const commands = value.jobs?.["e2e-simulated"]?.steps
+      ?.map(({ run }) => run)
+      .filter((run): run is string => run !== undefined) ?? [];
+    expect(commands.indexOf("npm run build")).toBeGreaterThanOrEqual(0);
+    expect(commands.indexOf("npm run test:e2e:simulated"))
+      .toBeGreaterThan(commands.indexOf("npm run build"));
   });
 });
