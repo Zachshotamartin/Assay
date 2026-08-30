@@ -1,0 +1,1 @@
+{"scenario_version":1,"steps":[{"emit":{"type":"session_started","sessionId":"sim-session"}},{"misbehave":"exit_zero_without_terminal"}]}

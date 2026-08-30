@@ -1,0 +1,1 @@
+{"scenario_version":1,"steps":[{"emit":{"type":"session_started","sessionId":"sim-session"}},{"misbehave":"missing_tool_result"},{"emit":{"type":"run_completed","summary":"missing result"}}]}

@@ -409,6 +409,8 @@ describe("malformed, ordering, and capture policy", () => {
     expect(result.stderr.droppedBytes).toBeGreaterThan(0);
     expect(result.stderr.redacted).toContain("HEAD-[REDACTED]");
     expect(result.stderr.redacted).toContain("TAIL-[REDACTED]");
+    expect(result.stderr.redacted).toMatch(/\.\.\.\[[0-9]+ bytes elided\]\.\.\./u);
+    expect(encoder.encode(result.stderr.redacted).byteLength).toBeLessThanOrEqual(256 * 1024);
     expect(JSON.stringify(result)).not.toContain("sk-secret-value");
     expect(result.events).toContainEqual(expect.objectContaining({
       type: "text_output",
