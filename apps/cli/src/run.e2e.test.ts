@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { readdir, readFile, rm, mkdir, mkdtemp, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -159,6 +160,47 @@ function databaseRows(root: string, storePath = ".assay"): {
   return { runs, taskRuns, events };
 }
 
+function effectiveSeed(rootSeed: number, taskContentHash: string, repetition: number): string {
+  return createHash("sha256")
+    .update(canonicalJson({ repetition, rootSeed, taskContentHash }))
+    .digest("hex")
+    .slice(0, 16);
+}
+
+async function addPolicyTask(
+  root: string,
+  id: string,
+  policy: Readonly<Record<string, unknown>>
+): Promise<void> {
+  await writeFile(join(root, `${id}.task.yaml`), JSON.stringify({
+    format_version: "1.0",
+    id,
+    title: `Policy ${id}`,
+    fixture: { path: "fixtures/repo" },
+    prompt: `Run ${id} deterministically.`,
+    toolset: { catalog: "simulated/1" },
+    sandbox: {
+      image: `synthetic@sha256:${"0".repeat(64)}`,
+      network: "none",
+      timeout_ms: 10_000
+    },
+    assertions: [{ type: "file_exists", path: "README.md" }],
+    run_policy: policy
+  }), "utf8");
+}
+
+async function configurePolicySuite(root: string): Promise<void> {
+  const basicPath = join(root, "basic.task.yaml");
+  const basic = JSON.parse(await readFile(basicPath, "utf8")) as Record<string, unknown>;
+  basic["run_policy"] = { n: 2, seed: 11, seed_strategy: "derived" };
+  await writeFile(basicPath, JSON.stringify(basic), "utf8");
+  await addPolicyTask(root, "fixed-task", { n: 3, seed: 19, seed_strategy: "fixed" });
+  const suitePath = join(root, "core.suite.yaml");
+  const suite = JSON.parse(await readFile(suitePath, "utf8")) as Record<string, unknown>;
+  suite["include"] = ["basic.task.yaml", "fixed-task.task.yaml"];
+  await writeFile(suitePath, JSON.stringify(suite), "utf8");
+}
+
 async function allFileBytes(directory: string): Promise<Uint8Array[]> {
   const output: Uint8Array[] = [];
   const visit = async (path: string): Promise<void> => {
@@ -285,6 +327,150 @@ describe("R1.13 validate and run integration", () => {
     ]);
     expect(capture.stdout[0]).toBe(`${canonicalJson(plan)}\n`);
     await expect(stat(join(root, ".assay"))).rejects.toMatchObject({ code: "ENOENT" });
+  });
+
+  it("plans heterogeneous task run policies with architecture-derived and fixed seeds", async () => {
+    const root = await projectRoot();
+    await writeProject(root);
+    await configurePolicySuite(root);
+    const capture = output();
+
+    expect(await executeCli([
+      "run", "core.suite.yaml", "--variant", "baseline", "--dry-run"
+    ], capture.io, runtime(root))).toBe(0);
+
+    const plan = JSON.parse(capture.stdout[0]!) as {
+      readonly tasks: readonly {
+        readonly id: string;
+        readonly contentHash: string;
+        readonly repetitions: number;
+        readonly rootSeed: number;
+        readonly seedStrategy: string;
+        readonly effectiveSeeds: readonly string[];
+      }[];
+    };
+    const derived = plan.tasks.find((task) => task.id === "basic-task")!;
+    const fixed = plan.tasks.find((task) => task.id === "fixed-task")!;
+    expect(derived).toMatchObject({ repetitions: 2, rootSeed: 11, seedStrategy: "derived" });
+    expect(derived.effectiveSeeds).toEqual([
+      effectiveSeed(11, derived.contentHash, 0),
+      effectiveSeed(11, derived.contentHash, 1)
+    ]);
+    expect(fixed).toMatchObject({ repetitions: 3, rootSeed: 19, seedStrategy: "fixed" });
+    expect(fixed.effectiveSeeds).toEqual([
+      effectiveSeed(19, fixed.contentHash, 0),
+      effectiveSeed(19, fixed.contentHash, 0),
+      effectiveSeed(19, fixed.contentHash, 0)
+    ]);
+
+    const executed = output();
+    expect(await executeCli([
+      "run", "core.suite.yaml", "--variant", "baseline"
+    ], executed.io, runtime(root))).toBe(0);
+    const stored = databaseRows(root);
+    expect(stored.taskRuns.filter((record) => record["taskId"] === "basic-task")).toHaveLength(2);
+    expect(stored.taskRuns.filter((record) => record["taskId"] === "fixed-task")).toHaveLength(3);
+    const runPlanned = stored.events.find((record) => record["type"] === "RunPlanned")!;
+    const durablePlan = (runPlanned["payload"] as {
+      readonly tasks: readonly Readonly<Record<string, unknown>>[];
+    }).tasks;
+    expect(stored.taskRuns).toHaveLength(durablePlan.length);
+    expect(durablePlan).toHaveLength(plan.tasks.reduce((sum, task) => sum + task.repetitions, 0));
+  });
+
+  it("uses task counts before suite fallback and the built-in policy defaults", async () => {
+    const defaultRoot = await projectRoot();
+    await writeProject(defaultRoot);
+    const defaultCapture = output();
+
+    expect(await executeCli([
+      "run", "core.suite.yaml", "--variant", "baseline", "--dry-run"
+    ], defaultCapture.io, runtime(defaultRoot))).toBe(0);
+    const defaultPlan = JSON.parse(defaultCapture.stdout[0]!) as {
+      readonly tasks: readonly {
+        readonly contentHash: string;
+        readonly repetitions: number;
+        readonly rootSeed: number;
+        readonly seedStrategy: string;
+        readonly effectiveSeeds: readonly string[];
+      }[];
+    };
+    expect(defaultPlan.tasks[0]).toMatchObject({
+      repetitions: 10,
+      rootSeed: 0,
+      seedStrategy: "derived"
+    });
+    expect(defaultPlan.tasks[0]!.effectiveSeeds).toHaveLength(10);
+    expect(defaultPlan.tasks[0]!.effectiveSeeds[9]).toBe(
+      effectiveSeed(0, defaultPlan.tasks[0]!.contentHash, 9)
+    );
+
+    const layeredRoot = await projectRoot();
+    await writeProject(layeredRoot);
+    const basicPath = join(layeredRoot, "basic.task.yaml");
+    const basic = JSON.parse(await readFile(basicPath, "utf8")) as Record<string, unknown>;
+    basic["run_policy"] = { n: 2 };
+    await writeFile(basicPath, JSON.stringify(basic), "utf8");
+    await addPolicyTask(layeredRoot, "suite-default-task", {});
+    const suitePath = join(layeredRoot, "core.suite.yaml");
+    const suite = JSON.parse(await readFile(suitePath, "utf8")) as Record<string, unknown>;
+    suite["include"] = ["basic.task.yaml", "suite-default-task.task.yaml"];
+    suite["run_policy"] = { n: 4 };
+    await writeFile(suitePath, JSON.stringify(suite), "utf8");
+    const layeredCapture = output();
+
+    expect(await executeCli([
+      "run", "core.suite.yaml", "--variant", "baseline", "--dry-run"
+    ], layeredCapture.io, runtime(layeredRoot))).toBe(0);
+    const layeredPlan = JSON.parse(layeredCapture.stdout[0]!) as {
+      readonly tasks: readonly { readonly id: string; readonly repetitions: number }[];
+    };
+    expect(layeredPlan.tasks.find((task) => task.id === "basic-task")?.repetitions).toBe(2);
+    expect(layeredPlan.tasks.find((task) => task.id === "suite-default-task")?.repetitions).toBe(4);
+  });
+
+  it("lets CLI n and seed override every task policy and persists every effective seed", async () => {
+    const root = await projectRoot();
+    await writeProject(root);
+    await configurePolicySuite(root);
+    const capture = output();
+
+    expect(await executeCli([
+      "run", "core.suite.yaml", "--variant", "baseline", "-n", "2", "--seed", "42"
+    ], capture.io, runtime(root))).toBe(0);
+
+    const stored = databaseRows(root);
+    expect(stored.taskRuns.filter((record) => record["taskId"] === "basic-task")).toHaveLength(2);
+    expect(stored.taskRuns.filter((record) => record["taskId"] === "fixed-task")).toHaveLength(2);
+    const planned = stored.events.find((record) => record["type"] === "RunPlanned")!;
+    const plannedTasks = (planned["payload"] as { readonly tasks: readonly Readonly<Record<string, unknown>>[] }).tasks;
+    expect(stored.taskRuns).toHaveLength(plannedTasks.length);
+    const derived = plannedTasks.filter((entry) => entry["taskId"] === "basic-task");
+    const fixed = plannedTasks.filter((entry) => entry["taskId"] === "fixed-task");
+    expect(derived.map((entry) => entry["rootSeed"])).toEqual([42, 42]);
+    expect(derived.map((entry) => entry["seedStrategy"])).toEqual(["derived", "derived"]);
+    expect(derived.map((entry) => entry["seed"])).toEqual([
+      effectiveSeed(42, String(derived[0]!["taskContentHash"]), 0),
+      effectiveSeed(42, String(derived[1]!["taskContentHash"]), 1)
+    ]);
+    expect(fixed.map((entry) => entry["rootSeed"])).toEqual([42, 42]);
+    expect(fixed.map((entry) => entry["seedStrategy"])).toEqual(["fixed", "fixed"]);
+    expect(fixed[0]!["seed"]).toBe(fixed[1]!["seed"]);
+
+    for (const record of stored.taskRuns) {
+      const hash = String(record["trajectoryBlob"]);
+      const trajectory = JSON.parse(await readFile(
+        join(root, ".assay", "objects", hash.slice(0, 2), hash),
+        "utf8"
+      )) as Readonly<Record<string, unknown>>;
+      const matching = plannedTasks.find((entry) => entry["taskRunId"] === record["taskRunId"]);
+      expect(trajectory).toMatchObject({
+        taskRunId: record["taskRunId"],
+        effectiveSeed: matching?.["seed"],
+        rootSeed: 42,
+        seedStrategy: matching?.["seedStrategy"]
+      });
+    }
   });
 
   it("runs the simulated adapter twice, evaluates assertions, and persists synthetic evidence", async () => {
