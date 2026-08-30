@@ -14,6 +14,9 @@ interface WorkflowStep {
 interface WorkflowJob {
   readonly name?: string;
   readonly "runs-on"?: string | Readonly<Record<string, unknown>>;
+  readonly strategy?: {
+    readonly matrix?: Readonly<Record<string, unknown>>;
+  };
   readonly steps?: readonly WorkflowStep[];
 }
 
@@ -84,9 +87,11 @@ describe("R1 CI workflow contract", () => {
     expect(value.jobs?.["store-core"]?.name).toBe("store-core");
     expect(value.jobs?.["store-core"]?.["runs-on"]).toBe("ubuntu-24.04");
     expect(value.jobs?.["e2e-simulated"]?.name).toBe("e2e-simulated");
-    expect(value.jobs?.["e2e-simulated"]?.["runs-on"]).toEqual({
-      matrix: { os: ["ubuntu-24.04", "macos-14"] }
-    });
+    expect(value.jobs?.["e2e-simulated"]?.["runs-on"]).toBe("${{ matrix.os }}");
+    expect(value.jobs?.["e2e-simulated"]?.strategy?.matrix?.["os"]).toEqual([
+      "ubuntu-24.04",
+      "macos-14"
+    ]);
   });
 
   it("enforces the golden semantic-review policy in CI", async () => {
