@@ -15,6 +15,7 @@ import {
   type NewTaskRunRecord,
   type RunId,
   type RunRecord,
+  type RunStatus,
   type TaskRunId,
   type TaskRunRecord
 } from "@assay/contracts";
@@ -872,6 +873,42 @@ class SqliteRunStore implements RunStore {
     }
     invokeFault(this.#options.faultInjector, "after_run_commit");
     return runId;
+  }
+
+  async settleRun(
+    runId: RunId,
+    status: Exclude<RunStatus, "in_progress">
+  ): Promise<void> {
+    this.#assertOpen();
+    if (status !== "completed" && status !== "failed" && status !== "cancelled") {
+      throw new AssayError(
+        "internal_invariant",
+        `internal_invariant: run ${runId} cannot settle to ${JSON.stringify(status)}; no record changed; use completed, failed, or cancelled`
+      );
+    }
+    const current = await this.getRun(runId);
+    if (current.status !== "in_progress") {
+      throw new AssayError(
+        "internal_invariant",
+        `internal_invariant: run ${runId} already settled as ${current.status}; no record changed; append a new run instead of resettling immutable evidence`
+      );
+    }
+    const settled: RunRecord = { ...current, status };
+    const encoded = canonicalRecord(settled);
+    validateRunRecordJson(encoded.json);
+    await this.#writeTransaction(() => {
+      const update = this.#database
+        .prepare<[string, string, string, string]>(
+          "UPDATE runs SET status = ?, record_json = ?, record_hash = ? WHERE run_id = ? AND status = 'in_progress'"
+        )
+        .run(status, encoded.json, encoded.hash, runId);
+      if (update.changes !== 1) {
+        throw new AssayError(
+          "internal_invariant",
+          `internal_invariant: run ${runId} lost its one-way in_progress settlement race; no completed evidence was overwritten; reopen the run before retrying`
+        );
+      }
+    });
   }
 
   async appendTaskRun(runId: RunId, input: NewTaskRunRecord): Promise<TaskRunId> {

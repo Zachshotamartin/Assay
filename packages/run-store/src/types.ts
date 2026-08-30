@@ -105,6 +105,7 @@ export interface IntegrityReport {
 
 export interface RunStore {
   appendRun(run: NewRunRecord): Promise<RunId>;
+  settleRun(runId: RunId, status: Exclude<RunStatus, "in_progress">): Promise<void>;
   appendTaskRun(runId: RunId, record: NewTaskRunRecord): Promise<TaskRunId>;
   appendEvent(runId: RunId, sequence: number, event: AssayEvent): Promise<string>;
   putBlob(bytes: Uint8Array): Promise<BlobHash>;
