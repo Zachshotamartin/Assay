@@ -1,4 +1,17 @@
 import { AssayError, exitCodeForCategory, type ExitCode } from "@assay/contracts";
+import { simulatedAdapterCommand } from "@assay/adapter-simulated";
+import { redactText } from "@assay/redaction";
+
+import {
+  loadConfigInput,
+  loadPreparedSuite,
+  resolveRuntimeConfig,
+  validateProjectInputs
+} from "./project.js";
+import { executeRunCommand } from "./run-command.js";
+import { createProcessRuntime, type CliRuntime } from "./runtime.js";
+
+export type { CliRuntime } from "./runtime.js";
 
 export interface CliIo {
   readonly stdout: (text: string) => void;
@@ -129,7 +142,23 @@ export function parseCliInvocation(argv: readonly string[]): CliInvocation {
   return invalidInvocation(`unknown command or top-level flag ${argv[0]}`);
 }
 
-export async function executeCli(argv: readonly string[], io: CliIo): Promise<ExitCode> {
+export async function executeCli(
+  argv: readonly string[],
+  io: CliIo,
+  providedRuntime?: CliRuntime
+): Promise<ExitCode> {
+  const ownedRuntime = providedRuntime === undefined
+    ? createProcessRuntime(process.cwd(), (adapterId) => {
+        if (adapterId !== "adapter-simulated") {
+          throw new AssayError(
+            "adapter_unavailable",
+            `adapter_unavailable: adapter ${JSON.stringify(adapterId)} is not installed`
+          );
+        }
+        return simulatedAdapterCommand();
+      })
+    : undefined;
+  const runtime = providedRuntime ?? ownedRuntime!.runtime;
   try {
     const invocation = parseCliInvocation(argv);
     if (invocation.command === "version") {
@@ -140,18 +169,46 @@ export async function executeCli(argv: readonly string[], io: CliIo): Promise<Ex
       io.stdout(HELP);
       return 0;
     }
-    throw new AssayError(
-      "internal_invariant",
-      `internal_invariant: ${invocation.command} dispatch is not wired`
-    );
+    const configInput = await loadConfigInput(runtime.projectRoot);
+    resolveRuntimeConfig(runtime, configInput);
+    if (invocation.command === "validate") {
+      const summary = await validateProjectInputs(runtime, invocation.paths);
+      io.stdout(
+        `Validated ${summary.suites} ${summary.suites === 1 ? "suite" : "suites"}, ` +
+        `${summary.tasks} ${summary.tasks === 1 ? "task" : "tasks"}, and ` +
+        `${summary.checkers} ${summary.checkers === 1 ? "checker" : "checkers"}.\n`
+      );
+      return 0;
+    }
+    const suite = await loadPreparedSuite(runtime.projectRoot, invocation.suitePath);
+    return await executeRunCommand(invocation, suite, configInput, runtime, io);
   } catch (error) {
-    const classified = error instanceof AssayError
+    let classified = error instanceof AssayError
       ? error
-      : new AssayError("internal_invariant", "internal_invariant: unexpected CLI failure", { cause: error });
-    io.stderr(`assay: ${classified.message}\n`);
+      : error instanceof DOMException && error.name === "AbortError"
+        ? new AssayError(
+            "cancelled",
+            "cancelled: the operation was interrupted; owned work was settled; rerun the command when ready",
+            { cause: error }
+          )
+        : new AssayError("internal_invariant", "internal_invariant: unexpected CLI failure", { cause: error });
+    let rendered: string;
+    try {
+      rendered = redactText(classified.message, { location: "/diagnostic" }).value;
+    } catch (cause) {
+      classified = new AssayError(
+        "redaction_failed",
+        "redaction_failed: the diagnostic could not be rendered safely; no unredacted diagnostic was emitted; inspect the local redaction engine",
+        { cause }
+      );
+      rendered = classified.message;
+    }
+    io.stderr(`assay: ${rendered}\n`);
     if (classified.category === "invalid_invocation") {
       io.stderr(HELP);
     }
     return exitCodeForCategory(classified.category);
+  } finally {
+    ownedRuntime?.dispose();
   }
 }

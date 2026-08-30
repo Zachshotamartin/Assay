@@ -105,6 +105,24 @@ describe("R1 capture-boundary semantic continuations", () => {
     const serialized = JSON.stringify(redacted);
 
     for (const fragment of fragments) expect(serialized).not.toContain(fragment);
-    expect(serialized).toContain("[REDACTED:provider-key:");
+    expect(serialized).toContain("[REDACTED:provider-openai:");
+  });
+
+  it("records persisted event pointers once without projection-only locations", () => {
+    const secret = "sk-proj-SYNTHETIC0123456789abcdefghijklmnopqrstuv";
+    const result = redactAdapterEventBatch([
+      { type: "text_output", seq: 2, ts, text: secret }
+    ], new Set());
+
+    expect(result.events[0]).toMatchObject({ text: expect.stringContaining("[REDACTED:provider-openai:") });
+    expect(result.manifests[0]!.redactionCount).toBe(1);
+    expect(result.manifests[0]!.applied).toEqual([
+      expect.objectContaining({
+        ruleId: "provider-openai",
+        location: "/trajectory/events/0/text",
+        count: 1
+      })
+    ]);
+    expect(JSON.stringify(result.manifests)).not.toContain("/trajectory/subjects");
   });
 });

@@ -172,6 +172,20 @@ async function allFileBytes(directory: string): Promise<Uint8Array[]> {
   return output;
 }
 
+async function waitForPath(path: string): Promise<void> {
+  const deadline = Date.now() + 2_000;
+  while (Date.now() < deadline) {
+    try {
+      await stat(path);
+      return;
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+    }
+    await new Promise<void>((resolveDelay) => setTimeout(resolveDelay, 10));
+  }
+  throw new Error(`timed out waiting for ${path}`);
+}
+
 describe("R1.13 validate and run integration", () => {
   it("validates tasks, suites, and checker modules without execution or store writes", async () => {
     const root = await projectRoot();
@@ -186,7 +200,7 @@ describe("R1.13 validate and run integration", () => {
       }
     }));
 
-    expect(code).toBe(0);
+    expect(code, capture.stderr.join("")).toBe(0);
     expect(capture.stdout).toEqual(["Validated 1 suite, 1 task, and 1 checker.\n"]);
     expect(capture.stderr).toEqual([]);
     expect(adapterResolutions).toBe(0);
@@ -282,7 +296,7 @@ describe("R1.13 validate and run integration", () => {
       "run", "core.suite.yaml", "--variant", "baseline", "-n", "2", "--seed", "7"
     ], capture.io, runtime(root));
 
-    expect(code).toBe(0);
+    expect(code, capture.stderr.join("")).toBe(0);
     expect(capture.stderr.join("")).toContain("UNSAFE HOST EXECUTION");
     expect(capture.stdout.join("")).toMatch(/2 passed, 0 failed, 0 errors/u);
     const stored = databaseRows(root);
@@ -324,7 +338,7 @@ describe("R1.13 validate and run integration", () => {
       "run", "core.suite.yaml", "--variant", "baseline", "-n", "1", "--seed", "9"
     ], capture.io, runtime(root));
 
-    expect(code).toBe(1);
+    expect(code, capture.stderr.join("")).toBe(1);
     expect(capture.stdout.join("")).toMatch(/0 passed, 1 failed, 0 errors/u);
     expect(databaseRows(root).taskRuns[0]).toMatchObject({
       state: "completed",
@@ -354,6 +368,32 @@ describe("R1.13 validate and run integration", () => {
     expect(databaseRows(root).taskRuns[0]).toMatchObject({ outcome: "pass" });
   });
 
+  it("validates git_init declarations but fails closed before R1 execution", async () => {
+    const root = await projectRoot();
+    await writeProject(root);
+    const taskPath = join(root, "basic.task.yaml");
+    const task = JSON.parse(await readFile(taskPath, "utf8")) as Record<string, unknown>;
+    task["fixture"] = { path: "fixtures/repo", git_init: true };
+    await writeFile(taskPath, JSON.stringify(task), "utf8");
+    const validated = output();
+
+    expect(await executeCli(["validate", "core.suite.yaml"], validated.io, runtime(root))).toBe(0);
+    let adapterResolutions = 0;
+    const run = output();
+    expect(await executeCli([
+      "run", "core.suite.yaml", "--variant", "baseline", "-n", "1"
+    ], run.io, runtime(root, {
+      adapterCommandFor: () => {
+        adapterResolutions += 1;
+        return simulatedAdapterCommand();
+      }
+    }))).toBe(5);
+    expect(run.stderr.join("")).toContain("sandbox_unavailable");
+    expect(run.stderr.join("")).toContain("packages/sandbox");
+    expect(adapterResolutions).toBe(0);
+    await expect(stat(join(root, ".assay"))).rejects.toMatchObject({ code: "ENOENT" });
+  });
+
   it("maps unavailable adapters to infrastructure exit 5 before creating a store", async () => {
     const root = await projectRoot();
     await writeProject(root);
@@ -381,6 +421,77 @@ describe("R1.13 validate and run integration", () => {
 
     expect(code).toBe(6);
     expect(capture.stderr.join("")).toContain("cancelled");
+  });
+
+  it("settles a started cancellation durably and preserves truthful start/end clocks", async () => {
+    const root = await projectRoot();
+    await writeProject(root);
+    const scenarioPath = join(root, "slow.scenario.json");
+    await writeFile(scenarioPath, JSON.stringify({
+      scenario_version: 1,
+      steps: [
+        { emit: { type: "session_started", sessionId: "cancel-session" } },
+        { sleep_ms: 5_000 },
+        { emit: { type: "run_completed", summary: "too late" } }
+      ]
+    }), "utf8");
+    const controller = new AbortController();
+    let wallTick = 0;
+    let monotonic = 1_000;
+    const clock: Clock = {
+      wallTime: () => new Date(Date.UTC(2026, 7, 30, 12, 0, wallTick++)).toISOString(),
+      monotonicMilliseconds: () => monotonic++
+    };
+    const capture = output();
+    const execution = executeCli([
+      "run", "core.suite.yaml", "--variant", "baseline", "-n", "1"
+    ], capture.io, runtime(root, {
+      clock,
+      signal: controller.signal,
+      adapterCommandFor: () => simulatedAdapterCommand({ scenarioPath })
+    }));
+
+    await waitForPath(join(root, ".assay", "assay.db"));
+    controller.abort();
+    expect(await execution).toBe(6);
+
+    const stored = databaseRows(root);
+    expect(stored.runs[0]).toMatchObject({ status: "cancelled" });
+    expect(stored.taskRuns[0]).toMatchObject({
+      state: "cancelled",
+      outcome: "error",
+      errorCategory: "cancelled"
+    });
+    expect(Date.parse(String(stored.taskRuns[0]!["startedAtUtc"])))
+      .toBeLessThan(Date.parse(String(stored.taskRuns[0]!["endedAtUtc"])));
+  });
+
+  it("settles adapter infrastructure errors as failed without scoring task failure", async () => {
+    const root = await projectRoot();
+    await writeProject(root);
+    const scenarioPath = join(root, "early-exit.scenario.json");
+    await writeFile(scenarioPath, JSON.stringify({
+      scenario_version: 1,
+      steps: [
+        { emit: { type: "session_started", sessionId: "error-session" } },
+        { misbehave: "early_exit" }
+      ]
+    }), "utf8");
+    const capture = output();
+
+    expect(await executeCli([
+      "run", "core.suite.yaml", "--variant", "baseline", "-n", "1"
+    ], capture.io, runtime(root, {
+      adapterCommandFor: () => simulatedAdapterCommand({ scenarioPath })
+    }))).toBe(5);
+
+    const stored = databaseRows(root);
+    expect(stored.runs[0]).toMatchObject({ status: "failed" });
+    expect(stored.taskRuns[0]).toMatchObject({
+      state: "failed_infrastructure",
+      outcome: "error",
+      errorCategory: "adapter_protocol_error"
+    });
   });
 
   it("redacts a credential split across adapter frames before any store byte is written", async () => {
