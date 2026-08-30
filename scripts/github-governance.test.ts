@@ -50,6 +50,10 @@ describe("R0 GitHub governance payloads", () => {
       verified_allowed: false,
       patterns_allowed: []
     });
+    await expect(setting("workflow-permissions")).resolves.toEqual({
+      default_workflow_permissions: "read",
+      can_approve_pull_request_reviews: false
+    });
   });
 
   it("records a separately approved release environment", async () => {
