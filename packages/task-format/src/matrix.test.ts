@@ -8,6 +8,7 @@ import { describe, expect, it } from "vitest";
 import {
   expandMatrix,
   parseMatrixBytes,
+  validateMatrixDocument,
   type LoadedYaml,
   type MatrixDocument,
   type TaskDocument
@@ -41,6 +42,23 @@ const baseTask: LoadedYaml<TaskDocument> = {
 
 function loadedMatrix(document: MatrixDocument): LoadedYaml<MatrixDocument> {
   return { path: "/project/variants.matrix.yaml", source: "", document };
+}
+
+function staticBaseTask(path = "/project/base.task.yaml"): LoadedYaml<TaskDocument> {
+  return {
+    ...baseTask,
+    path,
+    document: {
+      format_version: "1.0",
+      id: "matrix-task",
+      title: "Static matrix fixture",
+      fixture: { path: "./fixture" },
+      prompt: "Run the matrix fixture.",
+      toolset: { catalog: "simulated/1" },
+      sandbox: { image: `example.invalid/fixture@sha256:${digest}` },
+      assertions: [{ type: "exit_code", equals: 0 }]
+    }
+  };
 }
 
 describe("deterministic matrix expansion", () => {
@@ -95,20 +113,9 @@ describe("deterministic matrix expansion", () => {
     );
     const matrix = parseMatrixBytes(await readFile(fixturePath), fixturePath);
 
-    const fixtureBase = {
-      ...baseTask,
-      path: resolve(dirname(fixturePath), matrix.document.task),
-      document: {
-        format_version: "1.0",
-        id: "matrix-task",
-        title: "Collision fixture",
-        fixture: { path: "./fixture" },
-        prompt: "Run the collision fixture.",
-        toolset: { catalog: "simulated/1" },
-        sandbox: { image: `example.invalid/fixture@sha256:${digest}` },
-        assertions: [{ type: "exit_code", equals: 0 }]
-      }
-    };
+    const fixtureBase = staticBaseTask(
+      resolve(dirname(fixturePath), matrix.document.task)
+    );
 
     expect(() => expandMatrix(matrix, fixtureBase)).toThrowError(
       expect.objectContaining({
@@ -174,5 +181,35 @@ describe("deterministic matrix expansion", () => {
         baseTask
       )
     ).toThrowError(expect.objectContaining({ code: "task_invalid/matrix-size" }));
+  });
+
+  it("accepts one-character axis names and enforces the 128-character instance-id bound", () => {
+    const oneCharacterAxis = loadedMatrix({
+      format_version: "1.0",
+      task: "./base.task.yaml",
+      axes: { x: ["ok"] }
+    });
+    expect(validateMatrixDocument(oneCharacterAxis.document)).toEqual({ ok: true });
+    const oneCharacterBase = staticBaseTask();
+    const expanded = expandMatrix(oneCharacterAxis, {
+      ...oneCharacterBase,
+      document: { ...oneCharacterBase.document, prompt: "${{ matrix.x }}" }
+    });
+    expect(expanded[0]?.document["id"]).toBe(
+      "matrix-task[x=ok]"
+    );
+    expect(expanded[0]?.document["prompt"]).toBe("ok");
+
+    const overlong = loadedMatrix({
+      format_version: "1.0",
+      task: "./base.task.yaml",
+      axes: { x: ["v".repeat(120)] }
+    });
+    expect(() => expandMatrix(overlong, staticBaseTask())).toThrowError(
+      expect.objectContaining({
+        category: "task_invalid",
+        code: "task_invalid/matrix-id-length"
+      })
+    );
   });
 });

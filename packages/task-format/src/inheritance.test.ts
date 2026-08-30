@@ -30,6 +30,17 @@ function fixtureLoader(
   };
 }
 
+function inheritanceOptions(
+  entries: Readonly<Record<string, TaskDocument>>,
+  realpath: (path: string) => Promise<string> = async (path) => path
+) {
+  return {
+    projectRoot: "/project",
+    realpath,
+    loadTask: fixtureLoader(entries)
+  };
+}
+
 const abstractParent: TaskDocument = {
   format_version: "1.0",
   id: "parent-task",
@@ -75,9 +86,10 @@ describe("single-parent task inheritance", () => {
     const parentPath = "/project/tasks/parent.task.yaml";
     expect(validateTaskDocument(concreteChild)).toEqual({ ok: true });
 
-    const result = await resolveTaskInheritance(loaded(childPath, concreteChild), {
-      loadTask: fixtureLoader({ [parentPath]: abstractParent })
-    });
+    const result = await resolveTaskInheritance(
+      loaded(childPath, concreteChild),
+      inheritanceOptions({ [parentPath]: abstractParent })
+    );
 
     expect(result.inheritanceChain).toEqual([parentPath, childPath]);
     expect(result.document).toMatchObject({
@@ -114,9 +126,10 @@ describe("single-parent task inheritance", () => {
       "+append:tags": ["child"]
     } as TaskDocument;
 
-    const result = await resolveTaskInheritance(loaded(childPath, child), {
-      loadTask: fixtureLoader({ [parentPath]: abstractParent })
-    });
+    const result = await resolveTaskInheritance(
+      loaded(childPath, child),
+      inheritanceOptions({ [parentPath]: abstractParent })
+    );
 
     expect(result.document["tags"]).toEqual(["parent", "shared", "child"]);
     expect(result.document).not.toHaveProperty("+append:tags");
@@ -149,9 +162,10 @@ describe("single-parent task inheritance", () => {
     const firstPath = Object.keys(entries)[0] as string;
 
     try {
-      await resolveTaskInheritance(loaded(firstPath, entries[firstPath] as TaskDocument), {
-        loadTask: fixtureLoader(entries)
-      });
+      await resolveTaskInheritance(
+        loaded(firstPath, entries[firstPath] as TaskDocument),
+        inheritanceOptions(entries)
+      );
       throw new Error("expected cycle rejection");
     } catch (error) {
       expect(error).toMatchObject({
@@ -176,9 +190,10 @@ describe("single-parent task inheritance", () => {
     }
 
     await expect(
-      resolveTaskInheritance(loaded("/project/task-0.task.yaml", entries["/project/task-0.task.yaml"]!), {
-        loadTask: fixtureLoader(entries)
-      })
+      resolveTaskInheritance(
+        loaded("/project/task-0.task.yaml", entries["/project/task-0.task.yaml"]!),
+        inheritanceOptions(entries)
+      )
     ).rejects.toMatchObject({
       category: "task_invalid",
       code: "task_invalid/extends-depth"
@@ -194,7 +209,7 @@ describe("single-parent task inheritance", () => {
           title: "Child",
           extends: "./missing.task.yaml"
         }),
-        { loadTask: fixtureLoader({}) }
+        inheritanceOptions({})
       )
     ).rejects.toMatchObject({
       category: "task_invalid",
@@ -207,17 +222,57 @@ describe("single-parent task inheritance", () => {
   it("never inherits a concrete child's id or title", async () => {
     const { title: _title, ...childWithoutTitle } = concreteChild;
     await expect(
-      resolveTaskInheritance(loaded("/project/tasks/child.task.yaml", childWithoutTitle), {
-        loadTask: fixtureLoader({
+      resolveTaskInheritance(
+        loaded("/project/tasks/child.task.yaml", childWithoutTitle),
+        inheritanceOptions({
           "/project/tasks/parent.task.yaml": {
             ...abstractParent,
             title: "Parent title must not leak"
           }
         })
-      })
+      )
     ).rejects.toMatchObject({
       category: "task_invalid",
       code: "task_invalid/inherited-identity"
+    });
+  });
+
+  it.each([
+    ["absolute", "/outside/parent.task.yaml"],
+    ["lexical", "../../outside/parent.task.yaml"]
+  ] as const)("rejects an %s extends escape before reading it", async (_kind, parentReference) => {
+    const child = loaded("/project/tasks/child.task.yaml", {
+      format_version: "1.0",
+      id: "child-task",
+      title: "Child",
+      extends: parentReference
+    });
+
+    await expect(
+      resolveTaskInheritance(child, inheritanceOptions({}))
+    ).rejects.toMatchObject({
+      category: "task_invalid",
+      code: "task_invalid/path-escape"
+    });
+  });
+
+  it("rejects an in-root symlink whose real target escapes the project", async () => {
+    const childPath = "/project/tasks/child.task.yaml";
+    const linkPath = "/project/tasks/link.task.yaml";
+    const child = loaded(childPath, {
+      format_version: "1.0",
+      id: "child-task",
+      title: "Child",
+      extends: "./link.task.yaml"
+    });
+    const realpath = async (path: string): Promise<string> =>
+      path === linkPath ? "/outside/parent.task.yaml" : path;
+
+    await expect(
+      resolveTaskInheritance(child, inheritanceOptions({}, realpath))
+    ).rejects.toMatchObject({
+      category: "task_invalid",
+      code: "task_invalid/path-escape"
     });
   });
 });
