@@ -8,7 +8,7 @@ import {
   unlink,
   type FileHandle
 } from "node:fs/promises";
-import { join, parse, resolve } from "node:path";
+import { isAbsolute, join, parse, relative, resolve, sep } from "node:path";
 
 import { AssayError, canonicalJson, type Clock } from "@assay/contracts";
 
@@ -46,6 +46,40 @@ function permissionsError(path: string): AssayError {
     "storage_corrupt",
     `storage_corrupt: refused insecure store path ${JSON.stringify(path)}; no store state changed; run assay doctor and remove group/world write permissions`
   );
+}
+
+function invalidStorePath(configuredStorePath: string): AssayError {
+  return new AssayError(
+    "invalid_configuration",
+    `invalid_configuration: storePath ${JSON.stringify(configuredStorePath)} must name a project-local directory without symlinked ancestors; no store state changed; choose a relative path contained by the project root`
+  );
+}
+
+async function rejectSymlinkedStoreAncestors(
+  projectRoot: string,
+  storeDirectory: string,
+  configuredStorePath: string
+): Promise<void> {
+  const pathFromRoot = relative(projectRoot, storeDirectory);
+  const segments = pathFromRoot.split(sep).filter((segment) => segment !== "");
+  let current = projectRoot;
+  for (let index = 0; index < segments.length; index += 1) {
+    current = join(current, segments[index]!);
+    try {
+      const metadata = await lstat(current);
+      if (metadata.isSymbolicLink()) {
+        throw invalidStorePath(configuredStorePath);
+      }
+      if (index < segments.length - 1 && !metadata.isDirectory()) {
+        throw invalidStorePath(configuredStorePath);
+      }
+    } catch (error) {
+      if (isNodeError(error) && error.code === "ENOENT") {
+        return;
+      }
+      throw error;
+    }
+  }
 }
 
 async function ensurePrivateDirectory(path: string): Promise<void> {
@@ -96,13 +130,25 @@ export async function resolveStorePaths(
       "invalid_configuration: storePath must be a non-empty filesystem path without NUL bytes; no store state changed; correct storePath"
     );
   }
-  const storeDirectory = resolve(absoluteProjectRoot, configuredStorePath);
-  if (storeDirectory === parse(storeDirectory).root) {
-    throw new AssayError(
-      "invalid_configuration",
-      "invalid_configuration: storePath must not be a filesystem root; no store state changed; choose a dedicated private directory"
-    );
+  if (isAbsolute(configuredStorePath)) {
+    throw invalidStorePath(configuredStorePath);
   }
+  const storeDirectory = resolve(absoluteProjectRoot, configuredStorePath);
+  const pathFromProject = relative(absoluteProjectRoot, storeDirectory);
+  if (
+    storeDirectory === parse(storeDirectory).root ||
+    pathFromProject === "" ||
+    pathFromProject === ".." ||
+    pathFromProject.startsWith(`..${sep}`) ||
+    isAbsolute(pathFromProject)
+  ) {
+    throw invalidStorePath(configuredStorePath);
+  }
+  await rejectSymlinkedStoreAncestors(
+    absoluteProjectRoot,
+    storeDirectory,
+    configuredStorePath
+  );
   const objectsPath = join(storeDirectory, "objects");
   const temporaryPath = join(storeDirectory, "tmp");
   const quarantinePath = join(storeDirectory, "quarantine");
