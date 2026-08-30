@@ -23,8 +23,7 @@ import {
   openRunStore,
   type NewRunRecord,
   type NewTaskRunRecord,
-  type RunStoreOptions,
-  type StoreFaultMarker
+  type RunStoreOptions
 } from "./index.js";
 
 const createdRoots: string[] = [];
@@ -226,6 +225,25 @@ describe("R1.12 store core", () => {
     await store.close();
   });
 
+  it("makes retried task persistence idempotent on the immutable natural key", async () => {
+    const projectRoot = await temporaryProject();
+    const store = await openRunStore(storeOptions(projectRoot));
+    const runId = await store.appendRun(newRun());
+    const input = newTaskRun();
+
+    const firstId = await store.appendTaskRun(runId, input);
+    const replayedId = await store.appendTaskRun(runId, input);
+
+    expect(replayedId).toBe(firstId);
+    expect(await collect(store.listTaskRuns(runId))).toHaveLength(1);
+    await expect(
+      store.appendTaskRun(runId, newTaskRun(null, { outcome: "fail" }))
+    ).rejects.toMatchObject({ category: "internal_invariant" });
+    expect((await store.getTaskRun(firstId)).outcome).toBe("pass");
+
+    await store.close();
+  });
+
   it("STO-002 stores immutable fsynced blobs by sha256 and treats identical puts as success", async () => {
     const projectRoot = await temporaryProject();
     const store = await openRunStore(storeOptions(projectRoot));
@@ -238,6 +256,21 @@ describe("R1.12 store core", () => {
     expect(await store.getBlob(first)).toEqual(bytes);
     expect((await stat(objectPath(projectRoot, first))).isFile()).toBe(true);
     expect((await stat(objectPath(projectRoot, first))).mode & 0o777).toBe(0o600);
+
+    await store.close();
+  });
+
+  it("refuses a task row until every referenced blob is durable and hash-valid", async () => {
+    const projectRoot = await temporaryProject();
+    const store = await openRunStore(storeOptions(projectRoot));
+    const runId = await store.appendRun(newRun());
+    const missing = createBlobHash("e".repeat(64));
+
+    await expect(store.appendTaskRun(runId, newTaskRun(missing))).rejects.toMatchObject({
+      category: "storage_corrupt"
+    });
+    expect(await collect(store.listTaskRuns(runId))).toEqual([]);
+    expect((await store.verifyIntegrity()).danglingBlobReferences).toEqual([]);
 
     await store.close();
   });
@@ -390,5 +423,3 @@ describe("R1.12 store core", () => {
     await store.close();
   });
 });
-
-export type StoreTestFaultMarker = StoreFaultMarker;

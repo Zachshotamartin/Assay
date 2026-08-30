@@ -10,9 +10,7 @@ import {
   createTaskRunId,
   createVariantName,
   type Clock,
-  type IdSource,
-  type RunId,
-  type TaskRunId
+  type IdSource
 } from "@assay/contracts";
 import { afterEach, describe, expect, it } from "vitest";
 
