@@ -5,7 +5,8 @@
   "description": "Implementation in progress for the Assay local-first agent evaluation harness.",
   "license": "MIT",
   "engines": {
-    "node": ">=22.0.0 <23.0.0"
+    "node": ">=22.0.0 <23.0.0",
+    "npm": ">=10.0.0 <11.0.0"
   },
   "packageManager": "npm@10.9.8",
   "workspaces": [
@@ -24,7 +25,6 @@
   },
   "devDependencies": {
     "@types/node": "22.20.1",
-    "@vitest/coverage-v8": "3.2.7",
     "esbuild": "0.28.2",
     "fast-check": "4.9.0",
     "tsx": "4.23.13",

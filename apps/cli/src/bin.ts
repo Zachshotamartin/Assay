@@ -1,3 +1,6 @@
-// The executable surface is added by the gate that owns CLI behavior.
-export {};
+import { executeCli } from "./cli.js";
 
+process.exitCode = executeCli(process.argv.slice(2), {
+  stdout: (text) => process.stdout.write(text),
+  stderr: (text) => process.stderr.write(text)
+});
