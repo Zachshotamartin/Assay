@@ -192,6 +192,19 @@ describe("R1.13 validate and run integration", () => {
     await expect(stat(join(root, ".assay"))).rejects.toMatchObject({ code: "ENOENT" });
   });
 
+  it("recursively validates a directory corpus in deterministic path order", async () => {
+    const root = await projectRoot();
+    await writeProject(root, { includeChecker: true });
+    const capture = output();
+
+    const code = await executeCli(["validate", "."], capture.io, runtime(root));
+
+    expect(code).toBe(0);
+    expect(capture.stdout).toEqual(["Validated 1 suite, 1 task, and 1 checker.\n"]);
+    expect(capture.stderr).toEqual([]);
+    await expect(stat(join(root, ".assay"))).rejects.toMatchObject({ code: "ENOENT" });
+  });
+
   it("resolves CLI over env over file config and emits a canonical dry-run with zero effects", async () => {
     const root = await projectRoot();
     await writeProject(root, {
