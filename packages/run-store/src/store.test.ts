@@ -241,6 +241,26 @@ describe("R1.12 store core", () => {
     await store.close();
   });
 
+  it("settles one in-progress run exactly once without mutating a rerun", async () => {
+    const projectRoot = await temporaryProject();
+    const store = await openRunStore(storeOptions(projectRoot));
+    const firstId = await store.appendRun(newRun({ status: "in_progress" }));
+    const secondId = await store.appendRun(newRun({ status: "in_progress" }));
+    const secondBefore = canonicalJson(await store.getRun(secondId));
+
+    await store.settleRun(firstId, "completed");
+
+    expect(await store.getRun(firstId)).toMatchObject({ status: "completed" });
+    expect(canonicalJson(await store.getRun(secondId))).toBe(secondBefore);
+    await expect(store.settleRun(firstId, "failed")).rejects.toMatchObject({
+      category: "internal_invariant"
+    });
+    expect(await store.getRun(firstId)).toMatchObject({ status: "completed" });
+    expect(await store.getRun(secondId)).toMatchObject({ status: "in_progress" });
+
+    await store.close();
+  });
+
   it("makes retried task persistence idempotent on the immutable natural key", async () => {
     const projectRoot = await temporaryProject();
     const store = await openRunStore(storeOptions(projectRoot));
