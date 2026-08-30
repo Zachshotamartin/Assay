@@ -130,6 +130,39 @@ function removeAmbientCapability(name: string): void {
   }
 }
 
+function blockedStringCodeGeneration(): never {
+  throw new EvalError("checker string code generation is disabled");
+}
+
+function disableStringCodeGeneration(): void {
+  const constructors = [
+    (() => undefined).constructor,
+    (async () => undefined).constructor,
+    (function* (): Generator<never, void, unknown> { return undefined; }).constructor,
+    (async function* (): AsyncGenerator<never, void, unknown> { return undefined; }).constructor
+  ];
+  for (const constructor of constructors) {
+    const prototype = (constructor as { readonly prototype?: object }).prototype;
+    if (prototype !== undefined) {
+      Object.defineProperty(prototype, "constructor", {
+        value: blockedStringCodeGeneration,
+        writable: false,
+        enumerable: false,
+        configurable: false
+      });
+    }
+  }
+  for (const name of ["eval", "Function"] as const) {
+    Object.defineProperty(globalThis, name, {
+      value: blockedStringCodeGeneration,
+      writable: false,
+      enumerable: false,
+      configurable: false
+    });
+  }
+}
+
+disableStringCodeGeneration();
 for (const name of ["fetch", "WebSocket", "EventSource", "process"] as const) {
   removeAmbientCapability(name);
 }

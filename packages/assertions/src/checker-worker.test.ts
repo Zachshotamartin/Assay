@@ -328,7 +328,9 @@ export async function check(ctx: CheckerContext): Promise<CheckerVerdict> {
 
   it.each([
     ["Function", `Function("name", "return import(name)")`],
-    ["indirect eval", `(0, eval)("(name) => import(name)")`]
+    ["indirect eval", `(0, eval)("(name) => import(name)")`],
+    ["function constructor recovery", `(() => undefined).constructor("name", "return import(name)")`],
+    ["async constructor recovery", `Object.getPrototypeOf(async () => undefined).constructor("name", "return import(name)")`]
   ])("blocks runtime-generated imports through %s", async (_label, loaderExpression) => {
     const { project, workspace } = await checkerProject({
       "checks/generated-import.checker.ts": `${CHECKER_IMPORTS}
