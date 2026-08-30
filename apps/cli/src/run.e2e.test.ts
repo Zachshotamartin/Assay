@@ -244,7 +244,9 @@ describe("R1.13 validate and run integration", () => {
     }));
 
     expect(code, capture.stderr.join("")).toBe(0);
-    expect(capture.stdout).toEqual(["Validated 1 suite, 1 task, and 1 checker.\n"]);
+    expect(capture.stdout).toEqual([
+      "Validated 1 suite, 1 task, 0 matrices, 1 checker, and 0 rubrics.\n"
+    ]);
     expect(capture.stderr).toEqual([]);
     expect(adapterResolutions).toBe(0);
     await expect(stat(join(root, ".assay"))).rejects.toMatchObject({ code: "ENOENT" });
@@ -258,7 +260,9 @@ describe("R1.13 validate and run integration", () => {
     const code = await executeCli(["validate", "."], capture.io, runtime(root));
 
     expect(code).toBe(0);
-    expect(capture.stdout).toEqual(["Validated 1 suite, 1 task, and 1 checker.\n"]);
+    expect(capture.stdout).toEqual([
+      "Validated 1 suite, 1 task, 0 matrices, 1 checker, and 0 rubrics.\n"
+    ]);
     expect(capture.stderr).toEqual([]);
     await expect(stat(join(root, ".assay"))).rejects.toMatchObject({ code: "ENOENT" });
   });

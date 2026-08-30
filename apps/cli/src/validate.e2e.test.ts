@@ -7,6 +7,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { executeCli, type CliIo, type CliRuntime } from "./cli.js";
 
 const roots: string[] = [];
+const PLANTED_OPENAI_KEY = "sk-proj-SYNTHETIC0123456789abcdefghijklmnopqrstuv";
 
 afterEach(async () => {
   await Promise.all(roots.splice(0).map((root) => rm(root, { recursive: true, force: true })));
@@ -255,7 +256,7 @@ assertions:
         { type: "checker", module: "missing.checker.ts" }
       ],
       {
-        fixture: { path: "missing-fixture" },
+        fixture: { path: `missing-fixture-${PLANTED_OPENAI_KEY}` },
         prompt: { file: "missing.prompt.md" }
       }
     ));
@@ -306,6 +307,8 @@ unexpected: true
     expect(diagnostics).toContain("task_invalid/rubric-criteria-id-duplicate");
     expect(diagnostics).toContain("task_invalid/rubric-weight-sum");
     expect(diagnostics).toContain("missing-calibration.jsonl");
+    expect(diagnostics).not.toContain(PLANTED_OPENAI_KEY);
+    expect(diagnostics).toContain(`[REDACTED:provider-openai:${PLANTED_OPENAI_KEY.length}]`);
 
     const renderedLines = diagnostics.split("\n").filter((line) => /^[^ ]+\.\w+/u.test(line));
     expect(renderedLines).toEqual([...renderedLines].sort((left, right) => {
