@@ -42,6 +42,16 @@ describe("deep JSON redaction", () => {
     expect(result.manifest.applied[0]?.location).toBe("/adapter_event/output");
   });
 
+  it("enforces the exact serialized UTF-8 bound without a serialized copy", () => {
+    const value = { escaped: 'quote=" slash=\\ newline=\n snowman=☃' };
+    const byteLength = Buffer.byteLength(JSON.stringify(value), "utf8");
+
+    expect(redactJsonDeep(value, { maxInputBytes: byteLength }).value).toEqual(value);
+    expect(() => redactJsonDeep(value, { maxInputBytes: byteLength - 1 })).toThrowError(
+      expect.objectContaining({ category: "redaction_failed" })
+    );
+  });
+
   it.each([
     undefined,
     1n,

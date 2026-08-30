@@ -94,6 +94,16 @@ describe("buffered redaction sessions", () => {
       expect.objectContaining({ category: "redaction_failed" })
     );
   });
+
+  it("snapshots known hash exemptions when a session is created", () => {
+    const hash = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
+    const knownHashes = new Set([hash]);
+    const session = createTextRedactionSession({ knownHashes });
+    knownHashes.clear();
+    session.write(hash);
+
+    expect(session.finish().value).toBe(hash);
+  });
 });
 
 describe("logical JSON record sessions", () => {
@@ -187,15 +197,15 @@ describe("logical JSON record sessions", () => {
 
   it("detects a provider key split across three changing record fields", () => {
     const session = createJsonRedactionSession();
-    session.write({ delta: "sk-proj-SYN" });
-    session.write({ content: "THETIC0123" });
-    session.write({ result: "456789abcdefghijklmnopqrstuv" });
+    session.write({ type: "chunk", delta: "sk-proj-SYN" });
+    session.write({ type: "chunk", content: "THETIC0123" });
+    session.write({ type: "chunk", result: "456789abcdefghijklmnopqrstuv" });
 
     const results = session.finish();
     expect(results.map((result) => result.value)).toEqual([
-      { delta: "[REDACTED:provider-openai:11]" },
-      { content: "[REDACTED:provider-openai:10]" },
-      { result: "[REDACTED:provider-openai:28]" }
+      { type: "chunk", delta: "[REDACTED:provider-openai:11]" },
+      { type: "chunk", content: "[REDACTED:provider-openai:10]" },
+      { type: "chunk", result: "[REDACTED:provider-openai:28]" }
     ]);
   });
 
@@ -228,6 +238,16 @@ describe("logical JSON record sessions", () => {
       { seq: 1, nested: { output: expect.stringContaining("[REDACTED:provider-openai:") } },
       { seq: 2, nested: { output: "safe" } }
     ]);
+  });
+
+  it("never retains a secret-bearing object key in a boundary manifest location", () => {
+    const session = createJsonRedactionSession();
+    session.write({ [OPENAI_KEY]: { value: OPENAI_KEY } });
+
+    const [result] = session.finish();
+    expect(JSON.stringify(result?.value)).not.toContain(OPENAI_KEY);
+    expect(JSON.stringify(result?.manifest)).not.toContain(OPENAI_KEY);
+    expect(result?.manifest.applied.every((entry) => entry.location === "" || entry.location.startsWith("/[REDACTED:"))).toBe(true);
   });
 
   it("fails closed and releases no result when the bounded record window overflows", () => {
