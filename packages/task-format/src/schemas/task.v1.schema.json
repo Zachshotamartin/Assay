@@ -1,0 +1,476 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.assay.dev/task/1.0.json",
+  "title": "Assay task format 1.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["format_version", "id"],
+  "properties": {
+    "format_version": { "const": "1.0" },
+    "id": { "$ref": "#/$defs/taskId" },
+    "title": { "$ref": "#/$defs/title" },
+    "description": { "type": "string", "maxLength": 4096 },
+    "tags": { "$ref": "#/$defs/tags" },
+    "+append:tags": { "$ref": "#/$defs/tags" },
+    "abstract": { "type": "boolean" },
+    "extends": { "type": "string", "minLength": 1 },
+    "fixture": { "$ref": "#/$defs/fixture" },
+    "prompt": { "$ref": "#/$defs/prompt" },
+    "toolset": { "$ref": "#/$defs/toolset" },
+    "sandbox": { "$ref": "#/$defs/sandbox" },
+    "assertions": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/assertion" }
+    },
+    "budgets": { "$ref": "#/$defs/taskBudgets" },
+    "run_policy": { "$ref": "#/$defs/taskRunPolicy" },
+    "judge": { "$ref": "#/$defs/judgeConfig" },
+    "trajectory_expectations": { "$ref": "#/$defs/trajectoryExpectations" }
+  },
+  "allOf": [
+    {
+      "if": {
+        "not": {
+          "properties": { "abstract": { "const": true } },
+          "required": ["abstract"]
+        }
+      },
+      "then": {
+        "properties": { "title": { "$ref": "#/$defs/title" } },
+        "required": ["title"]
+      }
+    },
+    {
+      "if": {
+        "allOf": [
+          {
+            "not": {
+              "properties": { "abstract": { "const": true } },
+              "required": ["abstract"]
+            }
+          },
+          {
+            "not": {
+              "properties": { "extends": { "type": "string" } },
+              "required": ["extends"]
+            }
+          }
+        ]
+      },
+      "then": {
+        "properties": {
+          "fixture": { "$ref": "#/$defs/fixture" },
+          "prompt": { "$ref": "#/$defs/prompt" },
+          "toolset": { "$ref": "#/$defs/toolset" },
+          "sandbox": { "$ref": "#/$defs/sandbox" },
+          "assertions": {
+            "type": "array",
+            "minItems": 1,
+            "items": { "$ref": "#/$defs/assertion" }
+          }
+        },
+        "required": ["fixture", "prompt", "toolset", "sandbox", "assertions"]
+      }
+    }
+  ],
+  "$defs": {
+    "taskId": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]{1,62}$"
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 120,
+      "pattern": "^[^\\r\\n]*$"
+    },
+    "tag": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]{0,31}$"
+    },
+    "tags": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/tag" }
+    },
+    "relativePath": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$)).+$"
+    },
+    "workspacePath": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))[^\\\\]+$"
+    },
+    "toolName": {
+      "type": "string",
+      "pattern": "^[a-z0-9_]{1,64}$"
+    },
+    "stringArgv": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string" }
+    },
+    "fixture": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "path": { "$ref": "#/$defs/relativePath" },
+        "archive": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["ref", "sha256"],
+          "properties": {
+            "ref": { "$ref": "#/$defs/relativePath" },
+            "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+          }
+        },
+        "git_init": { "type": "boolean" }
+      },
+      "oneOf": [
+        { "required": ["path"], "not": { "required": ["archive"] } },
+        { "required": ["archive"], "not": { "required": ["path"] } }
+      ]
+    },
+    "prompt": {
+      "oneOf": [
+        { "type": "string", "minLength": 1 },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["file"],
+          "properties": { "file": { "$ref": "#/$defs/relativePath" } }
+        }
+      ]
+    },
+    "toolset": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["catalog"],
+      "properties": {
+        "catalog": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9-]*/[1-9][0-9]*$"
+        },
+        "allow": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/toolName" }
+        },
+        "deny": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/toolName" }
+        }
+      }
+    },
+    "sandbox": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["image"],
+      "properties": {
+        "image": {
+          "type": "string",
+          "pattern": "^.+@sha256:[0-9a-f]{64}$"
+        },
+        "network": { "enum": ["none", "allowlist"] },
+        "hosts": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^(?=.{1,253}$)(?![0-9.]+$)(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\\.)*[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?$"
+          }
+        },
+        "cpu": { "type": "number", "exclusiveMinimum": 0, "maximum": 16 },
+        "memory_mb": { "type": "integer", "minimum": 64, "maximum": 65536 },
+        "pids": { "type": "integer", "minimum": 16, "maximum": 4096 },
+        "disk_mb": { "type": "integer", "minimum": 64, "maximum": 65536 },
+        "timeout_ms": { "type": "integer", "minimum": 1000, "maximum": 3600000 },
+        "env": {
+          "type": "object",
+          "additionalProperties": false,
+          "patternProperties": {
+            "^[A-Z][A-Z0-9_]{0,63}$": { "type": "string" }
+          }
+        },
+        "workdir": { "type": "string", "pattern": "^/" }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "network": { "const": "allowlist" } },
+            "required": ["network"]
+          },
+          "then": { "required": ["hosts"] },
+          "else": { "not": { "required": ["hosts"] } }
+        }
+      ]
+    },
+    "assertion": {
+      "oneOf": [
+        { "$ref": "#/$defs/exitCodeAssertion" },
+        { "$ref": "#/$defs/testsPassAssertion" },
+        { "$ref": "#/$defs/fileExistsAssertion" },
+        { "$ref": "#/$defs/fileAbsentAssertion" },
+        { "$ref": "#/$defs/fileContainsAssertion" },
+        { "$ref": "#/$defs/jsonSchemaAssertion" },
+        { "$ref": "#/$defs/diffMatchesAssertion" },
+        { "$ref": "#/$defs/commandOutputAssertion" },
+        { "$ref": "#/$defs/trajectoryAssertion" },
+        { "$ref": "#/$defs/checkerAssertion" },
+        { "$ref": "#/$defs/judgeAssertion" }
+      ]
+    },
+    "assertionName": { "type": "string", "minLength": 1, "maxLength": 64 },
+    "exitCodeAssertion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type"],
+      "properties": {
+        "type": { "const": "exit_code" },
+        "name": { "$ref": "#/$defs/assertionName" },
+        "equals": { "type": "integer", "minimum": 0, "maximum": 255 }
+      }
+    },
+    "testsPassAssertion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "command"],
+      "properties": {
+        "type": { "const": "tests_pass" },
+        "name": { "$ref": "#/$defs/assertionName" },
+        "command": { "$ref": "#/$defs/stringArgv" },
+        "cwd": { "type": "string", "minLength": 1 },
+        "timeout_ms": { "type": "integer", "minimum": 1000, "maximum": 3600000 }
+      }
+    },
+    "fileExistsAssertion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "path"],
+      "properties": {
+        "type": { "const": "file_exists" },
+        "name": { "$ref": "#/$defs/assertionName" },
+        "path": { "$ref": "#/$defs/workspacePath" },
+        "kind": { "enum": ["file", "dir", "any"] }
+      }
+    },
+    "fileAbsentAssertion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "path"],
+      "properties": {
+        "type": { "const": "file_absent" },
+        "name": { "$ref": "#/$defs/assertionName" },
+        "path": { "$ref": "#/$defs/workspacePath" }
+      }
+    },
+    "fileContainsAssertion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "path"],
+      "properties": {
+        "type": { "const": "file_contains" },
+        "name": { "$ref": "#/$defs/assertionName" },
+        "path": { "$ref": "#/$defs/workspacePath" },
+        "literal": { "type": "string", "minLength": 1 },
+        "regex": { "type": "string", "minLength": 1 },
+        "min_count": { "type": "integer", "minimum": 1 },
+        "max_bytes": { "type": "integer", "minimum": 1 }
+      },
+      "oneOf": [
+        { "required": ["literal"], "not": { "required": ["regex"] } },
+        { "required": ["regex"], "not": { "required": ["literal"] } }
+      ]
+    },
+    "jsonSchemaAssertion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "path", "schema"],
+      "properties": {
+        "type": { "const": "json_schema" },
+        "name": { "$ref": "#/$defs/assertionName" },
+        "path": { "$ref": "#/$defs/workspacePath" },
+        "schema": { "$ref": "#/$defs/relativePath" }
+      }
+    },
+    "diffMatchesAssertion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "expected"],
+      "properties": {
+        "type": { "const": "diff_matches" },
+        "name": { "$ref": "#/$defs/assertionName" },
+        "expected": { "$ref": "#/$defs/relativePath" },
+        "ignore_whitespace": { "enum": ["none", "trailing", "all"] },
+        "paths": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/workspacePath" }
+        }
+      }
+    },
+    "commandOutputAssertion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "command"],
+      "properties": {
+        "type": { "const": "command_output" },
+        "name": { "$ref": "#/$defs/assertionName" },
+        "command": { "$ref": "#/$defs/stringArgv" },
+        "stream": { "enum": ["stdout", "stderr", "both"] },
+        "equals": { "type": "string" },
+        "contains": { "type": "string" },
+        "regex": { "type": "string" },
+        "cwd": { "type": "string", "minLength": 1 },
+        "timeout_ms": { "type": "integer", "minimum": 1000, "maximum": 3600000 }
+      },
+      "oneOf": [
+        { "required": ["equals"], "not": { "anyOf": [{ "required": ["contains"] }, { "required": ["regex"] }] } },
+        { "required": ["contains"], "not": { "anyOf": [{ "required": ["equals"] }, { "required": ["regex"] }] } },
+        { "required": ["regex"], "not": { "anyOf": [{ "required": ["equals"] }, { "required": ["contains"] }] } }
+      ]
+    },
+    "trajectoryAssertion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "metric", "op", "value"],
+      "properties": {
+        "type": { "const": "trajectory" },
+        "name": { "$ref": "#/$defs/assertionName" },
+        "metric": {
+          "enum": [
+            "tool_selection_correctness",
+            "ordering_violations",
+            "redundant_call_count",
+            "read_before_write_violations",
+            "unprincipled_loop_count",
+            "turns_to_completion",
+            "cost_per_turn"
+          ]
+        },
+        "op": { "enum": ["<", "<=", ">", ">=", "==", "!="] },
+        "value": { "type": "number" }
+      }
+    },
+    "checkerAssertion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "module"],
+      "properties": {
+        "type": { "const": "checker" },
+        "name": { "$ref": "#/$defs/assertionName" },
+        "module": { "type": "string", "pattern": "^(?!/).+\\.checker\\.ts$" },
+        "timeout_ms": { "type": "integer", "minimum": 100, "maximum": 60000 },
+        "memory_mb": { "type": "integer", "minimum": 32, "maximum": 1024 }
+      }
+    },
+    "judgeAssertion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "threshold"],
+      "properties": {
+        "type": { "const": "judge" },
+        "name": { "$ref": "#/$defs/assertionName" },
+        "rubric": { "type": "string", "pattern": "^(?!/).+\\.rubric\\.yaml$" },
+        "threshold": { "type": "number", "exclusiveMinimum": 0, "maximum": 1 },
+        "k": { "enum": [1, 3, 5] },
+        "advisory": { "type": "boolean" }
+      }
+    },
+    "integerBudget": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["limit"],
+      "properties": {
+        "limit": { "type": "integer", "minimum": 1 },
+        "aggregate": { "enum": ["median", "p95"] },
+        "scope": { "const": "task" }
+      }
+    },
+    "dollarBudget": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["limit"],
+      "properties": {
+        "limit": { "type": "number", "exclusiveMinimum": 0, "multipleOf": 0.0001 },
+        "aggregate": { "enum": ["median", "p95"] },
+        "scope": { "const": "task" }
+      }
+    },
+    "taskBudgets": {
+      "type": "object",
+      "additionalProperties": false,
+      "minProperties": 1,
+      "properties": {
+        "tokens": { "$ref": "#/$defs/integerBudget" },
+        "wall_clock_ms": { "$ref": "#/$defs/integerBudget" },
+        "tool_calls": { "$ref": "#/$defs/integerBudget" },
+        "dollars": { "$ref": "#/$defs/dollarBudget" }
+      }
+    },
+    "taskRunPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "n": { "type": "integer", "minimum": 1, "maximum": 100 },
+        "seed": { "type": "integer", "minimum": 0, "maximum": 4294967295 },
+        "seed_strategy": { "enum": ["derived", "fixed"] }
+      }
+    },
+    "judgeConfig": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["rubric"],
+      "properties": {
+        "rubric": { "type": "string", "pattern": "^(?!/).+\\.rubric\\.yaml$" },
+        "model": {
+          "oneOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["family_not"],
+              "properties": { "family_not": { "const": "subject" } }
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["id"],
+              "properties": { "id": { "type": "string", "minLength": 1 } }
+            }
+          ]
+        },
+        "allow_same_family_judge": { "type": "boolean" }
+      }
+    },
+    "trajectoryExpectations": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "expected_tools": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/toolName" }
+        },
+        "ordering": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["first", "then"],
+            "properties": {
+              "first": { "$ref": "#/$defs/toolName" },
+              "then": { "$ref": "#/$defs/toolName" }
+            }
+          }
+        },
+        "read_before_write": { "type": "boolean" }
+      }
+    }
+  }
+}

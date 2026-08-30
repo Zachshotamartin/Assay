@@ -1,0 +1,119 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.assay.dev/suite/1.0.json",
+  "title": "Assay suite format 1.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["format_version", "id", "title", "include", "variants"],
+  "properties": {
+    "format_version": { "const": "1.0" },
+    "id": { "$ref": "#/$defs/id" },
+    "title": { "$ref": "#/$defs/title" },
+    "include": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "type": "string", "minLength": 1, "pattern": "^(?!/)" }
+    },
+    "tags": { "$ref": "#/$defs/tagSelector" },
+    "budgets": { "$ref": "#/$defs/suiteBudgets" },
+    "spend_ceiling_dollars": { "type": "number", "exclusiveMinimum": 0 },
+    "run_policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "n": { "type": "integer", "minimum": 1, "maximum": 100 }
+      }
+    },
+    "variants": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": false,
+      "patternProperties": {
+        "^[a-z0-9][a-z0-9-]{1,62}$": { "$ref": "#/$defs/variant" }
+      }
+    },
+    "comparison": { "$ref": "#/$defs/comparison" },
+    "allow_same_family_judge": { "type": "boolean" }
+  },
+  "$defs": {
+    "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]{1,62}$" },
+    "title": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 120,
+      "pattern": "^[^\\r\\n]*$"
+    },
+    "tag": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]{0,31}$" },
+    "tagList": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/tag" }
+    },
+    "tagSelector": {
+      "type": "object",
+      "additionalProperties": false,
+      "minProperties": 1,
+      "properties": {
+        "any_of": { "$ref": "#/$defs/tagList" },
+        "all_of": { "$ref": "#/$defs/tagList" },
+        "none_of": { "$ref": "#/$defs/tagList" }
+      }
+    },
+    "integerBudget": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["limit", "scope"],
+      "properties": {
+        "limit": { "type": "integer", "minimum": 1 },
+        "aggregate": { "enum": ["median", "p95"] },
+        "scope": { "const": "suite" }
+      }
+    },
+    "dollarBudget": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["limit", "scope"],
+      "properties": {
+        "limit": { "type": "number", "exclusiveMinimum": 0, "multipleOf": 0.0001 },
+        "aggregate": { "enum": ["median", "p95"] },
+        "scope": { "const": "suite" }
+      }
+    },
+    "suiteBudgets": {
+      "type": "object",
+      "additionalProperties": false,
+      "minProperties": 1,
+      "properties": {
+        "tokens": { "$ref": "#/$defs/integerBudget" },
+        "wall_clock_ms": { "$ref": "#/$defs/integerBudget" },
+        "tool_calls": { "$ref": "#/$defs/integerBudget" },
+        "dollars": { "$ref": "#/$defs/dollarBudget" }
+      }
+    },
+    "variant": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["adapter", "model"],
+      "properties": {
+        "adapter": { "type": "string", "minLength": 1 },
+        "model": { "type": "string", "minLength": 1 },
+        "prompt_version": { "type": "string", "minLength": 1 },
+        "toolset_version": { "type": "string", "minLength": 1 },
+        "agent_version": { "type": "string", "minLength": 1 }
+      }
+    },
+    "comparison": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["baseline_variant", "candidate_variant"],
+      "properties": {
+        "baseline_variant": { "type": "string", "minLength": 1 },
+        "candidate_variant": { "type": "string", "minLength": 1 },
+        "threshold": { "type": "number", "exclusiveMinimum": 0, "exclusiveMaximum": 1 },
+        "alpha": { "const": 0.05 },
+        "n": { "type": "integer", "minimum": 5, "maximum": 100 }
+      }
+    }
+  }
+}
