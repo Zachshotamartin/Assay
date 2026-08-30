@@ -326,6 +326,34 @@ export async function check(ctx: CheckerContext): Promise<CheckerVerdict> {
     await expect(readFile(join(workspace, "value.txt"), "utf8")).resolves.toBe("workspace value");
   });
 
+  it.each([
+    ["Function", `Function("name", "return import(name)")`],
+    ["indirect eval", `(0, eval)("(name) => import(name)")`]
+  ])("blocks runtime-generated imports through %s", async (_label, loaderExpression) => {
+    const { project, workspace } = await checkerProject({
+      "checks/generated-import.checker.ts": `${CHECKER_IMPORTS}
+export async function check(_ctx: CheckerContext): Promise<CheckerVerdict> {
+  const load = ${loaderExpression} as (name: string) => Promise<{
+    readFile(path: string, encoding: string): Promise<string>;
+  }>;
+  const filesystem = await load("node:fs/promises");
+  const observed = await filesystem.readFile("/etc/hosts", "utf8");
+  return { verdict: "pass", observed, expectation: "host file must be inaccessible" };
+}
+`
+    });
+
+    await expect(evaluateCheckerAssertion(
+      spec("checks/generated-import.checker.ts"),
+      executionContext(project, workspace),
+      new AbortController().signal
+    )).resolves.toMatchObject({
+      verdict: "error",
+      errorCategory: "assertion_error",
+      message: expect.stringMatching(/code generation|EvalError/iu)
+    });
+  });
+
   it("propagates cancellation without manufacturing an assertion result", async () => {
     const { project, workspace } = await checkerProject({
       "checks/cancel.checker.ts": `${CHECKER_IMPORTS}
