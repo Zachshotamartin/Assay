@@ -22,7 +22,12 @@ describe("R1 clean-clone reference fixture", () => {
     expect(runnable.tasks.map(({ document }) => document["id"])).toEqual(["reference-task"]);
     expect(validation.tasks.map(({ document }) => document["id"])).toEqual(["reference-task"]);
     expect(validation.suiteContentHash).toBe(runnable.suiteContentHash);
-    expect(Object.keys(runnable.suite.document["variants"])).toEqual(["baseline"]);
+    const variants = runnable.suite.document["variants"];
+    expect(variants).toEqual(expect.any(Object));
+    if (typeof variants !== "object" || variants === null || Array.isArray(variants)) {
+      throw new Error("validated reference suite variants were not an object");
+    }
+    expect(Object.keys(variants)).toEqual(["baseline"]);
 
     const task = runnable.tasks[0]!;
     const fixture = task.document["fixture"];
