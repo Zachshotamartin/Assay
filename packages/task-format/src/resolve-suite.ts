@@ -2,7 +2,7 @@ import { readdir, realpath as realpathFromDisk, stat } from "node:fs/promises";
 import { dirname, isAbsolute, relative, resolve, sep } from "node:path";
 
 import { suiteContentHash, taskContentHash } from "./content-hash.js";
-import { resolveTaskInheritance } from "./inheritance.js";
+import { resolveTaskInheritance, type ResolvedTask } from "./inheritance.js";
 import {
   loadMatrix,
   loadTask,
@@ -22,7 +22,7 @@ export interface SuiteWarning {
   readonly message: string;
 }
 
-export interface HashedResolvedTask extends LoadedYaml<TaskDocument> {
+export interface HashedResolvedTask extends ResolvedTask {
   readonly contentHash: string;
 }
 
@@ -331,7 +331,7 @@ export async function resolveSuite(
     }
   }
 
-  const resolvedTasks: LoadedYaml<TaskDocument>[] = [];
+  const resolvedTasks: ResolvedTask[] = [];
   const discoveredPaths = [...discovered.values()].sort((left, right) =>
     codePointCompare(left.path, right.path)
   );
@@ -442,6 +442,8 @@ export async function resolveSuite(
     path: task.path,
     source: task.source,
     document: task.document,
+    inheritanceChain: task.inheritanceChain,
+    fieldOrigins: task.fieldOrigins,
     contentHash: taskContentHash(task.document)
   }));
   return {

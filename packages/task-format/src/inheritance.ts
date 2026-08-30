@@ -13,6 +13,7 @@ export const MAX_INHERITANCE_FILES = 8;
 
 export interface ResolvedTask extends LoadedYaml<TaskDocument> {
   readonly inheritanceChain: readonly string[];
+  readonly fieldOrigins: Readonly<Record<string, string>>;
 }
 
 export interface InheritanceOptions {
@@ -109,9 +110,13 @@ function shallowMergeMapping(parent: unknown, child: unknown): unknown {
 
 function mergeDocuments(
   parent: TaskDocument,
+  parentOrigins: Readonly<Record<string, string>>,
   child: TaskDocument,
   childPath: string
-): TaskDocument {
+): {
+  readonly document: TaskDocument;
+  readonly fieldOrigins: Readonly<Record<string, string>>;
+} {
   const childIsAbstract = child["abstract"] === true;
   if (!childIsAbstract &&
       (!own(child, "title") || typeof child["title"] !== "string" || child["title"] === "")) {
@@ -125,15 +130,18 @@ function mergeDocuments(
   }
 
   const merged: Record<string, unknown> = {};
+  const fieldOrigins: Record<string, string> = {};
   for (const [key, value] of Object.entries(parent)) {
     if (!["format_version", "id", "title", "abstract", "extends", "+append:tags"].includes(key)) {
       merged[key] = cloneValue(value);
+      fieldOrigins[key] = parentOrigins[key] ?? childPath;
     }
   }
 
   for (const [key, value] of Object.entries(child)) {
     if (!["tags", "+append:tags", "budgets", "sandbox", "extends", "abstract"].includes(key)) {
       merged[key] = cloneValue(value);
+      fieldOrigins[key] = childPath;
     }
   }
 
@@ -151,28 +159,47 @@ function mergeDocuments(
   }
   if (own(child, "+append:tags")) {
     merged["tags"] = orderedUnion(parentTags, appendedTags);
+    fieldOrigins["tags"] = childPath;
   } else if (own(child, "tags")) {
     merged["tags"] = orderedUnion(childTags, parentTags);
+    fieldOrigins["tags"] = childPath;
   } else if (own(parent, "tags")) {
     merged["tags"] = cloneValue(parentTags);
+    fieldOrigins["tags"] = parentOrigins["tags"] ?? childPath;
   }
 
   for (const field of ["budgets", "sandbox"] as const) {
     if (own(child, field)) {
       merged[field] = shallowMergeMapping(parent[field], child[field]);
+      fieldOrigins[field] = childPath;
     }
   }
 
   merged["format_version"] = cloneValue(child["format_version"]);
+  fieldOrigins["format_version"] = childPath;
   merged["id"] = cloneValue(child["id"]);
+  fieldOrigins["id"] = childPath;
   if (own(child, "title")) {
     merged["title"] = cloneValue(child["title"]);
+    fieldOrigins["title"] = childPath;
   }
   if (childIsAbstract) {
     merged["abstract"] = true;
+    fieldOrigins["abstract"] = childPath;
   }
 
-  return merged;
+  return { document: merged, fieldOrigins };
+}
+
+function ownFieldOrigins(
+  document: TaskDocument,
+  filePath: string
+): Readonly<Record<string, string>> {
+  return Object.fromEntries(
+    Object.keys(document)
+      .filter((key) => key !== "extends" && key !== "+append:tags")
+      .map((key) => [key, filePath])
+  );
 }
 
 function validateResolved(document: TaskDocument, filePath: string): void {
@@ -275,7 +302,8 @@ export async function resolveTaskInheritance(
         path: currentPath,
         source: current.source,
         document: cloneValue(current.document) as TaskDocument,
-        inheritanceChain: [currentPath]
+        inheritanceChain: [currentPath],
+        fieldOrigins: ownFieldOrigins(current.document, currentPath)
       };
     }
 
@@ -349,13 +377,20 @@ export async function resolveTaskInheritance(
     }
 
     const resolvedParent = await visit(parent, nextTraversal);
-    const document = mergeDocuments(resolvedParent.document, current.document, currentPath);
+    const merged = mergeDocuments(
+      resolvedParent.document,
+      resolvedParent.fieldOrigins,
+      current.document,
+      currentPath
+    );
+    const { document } = merged;
     validateResolved(document, currentPath);
     return {
       path: currentPath,
       source: current.source,
       document,
-      inheritanceChain: [...resolvedParent.inheritanceChain, currentPath]
+      inheritanceChain: [...resolvedParent.inheritanceChain, currentPath],
+      fieldOrigins: merged.fieldOrigins
     };
   };
 

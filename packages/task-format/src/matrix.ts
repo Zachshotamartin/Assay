@@ -7,15 +7,31 @@ import {
   type MatrixScalar,
   type TaskDocument
 } from "./load-yaml.js";
+import type { ResolvedTask } from "./inheritance.js";
 import { validateTaskDocument } from "./schema.js";
 
 export const MAX_MATRIX_AXES = 4;
 export const MAX_MATRIX_INSTANCES = 64;
 
-export interface ExpandedMatrixTask extends LoadedYaml<TaskDocument> {
+export interface ExpandedMatrixTask extends ResolvedTask {
   readonly baseTaskPath: string;
   readonly matrixPath: string;
   readonly matrixValues: Readonly<Record<string, MatrixScalar>>;
+}
+
+function resolvedMetadata(
+  baseTask: LoadedYaml<TaskDocument>
+): Pick<ResolvedTask, "fieldOrigins" | "inheritanceChain"> {
+  const candidate = baseTask as Partial<ResolvedTask>;
+  const fieldOrigins = candidate.fieldOrigins ?? Object.fromEntries(
+    Object.keys(baseTask.document).map((field) => [field, resolve(baseTask.path)])
+  );
+  return {
+    fieldOrigins: { ...fieldOrigins },
+    inheritanceChain: candidate.inheritanceChain === undefined
+      ? [resolve(baseTask.path)]
+      : [...candidate.inheritanceChain]
+  };
 }
 
 class MatrixError extends TaskFormatError {
@@ -305,6 +321,7 @@ export function expandMatrix(
       path: resolve(baseTask.path),
       source: baseTask.source,
       document: substituted,
+      ...resolvedMetadata(baseTask),
       baseTaskPath: resolve(baseTask.path),
       matrixPath: resolve(matrix.path),
       matrixValues: { ...combination }
