@@ -14,6 +14,7 @@ interface WorkflowStep {
 interface WorkflowJob {
   readonly name?: string;
   readonly "runs-on"?: string | Readonly<Record<string, unknown>>;
+  readonly env?: Readonly<Record<string, unknown>>;
   readonly strategy?: {
     readonly matrix?: Readonly<Record<string, unknown>>;
   };
@@ -99,5 +100,8 @@ describe("R1 CI workflow contract", () => {
     const steps = value.jobs?.["e2e-simulated"]?.steps ?? [];
 
     expect(steps.some(({ run }) => run === "npm run check:goldens")).toBe(true);
+    expect(Object.keys(value.jobs?.["e2e-simulated"]?.env ?? {}).some((name) =>
+      name.startsWith("ASSAY_")
+    )).toBe(false);
   });
 });
