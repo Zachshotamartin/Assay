@@ -57,6 +57,7 @@ import {
   suiteDeclaresAnyBudget,
   suiteDeclaresDollarBudget,
   suiteRunPolicy,
+  taskRunPolicy,
   taskTags,
   variantDefinition,
   type LoadedConfigInput,
@@ -90,8 +91,20 @@ export interface RunInvocation {
 interface PlannedTaskRun {
   readonly task: PreparedTask;
   readonly repetition: number;
+  readonly rootSeed: number;
+  readonly seedStrategy: SeedStrategy;
   readonly seed: string;
   readonly taskRunId: TaskRunId;
+}
+
+type SeedStrategy = "derived" | "fixed";
+
+interface TaskExecutionPolicy {
+  readonly task: PreparedTask;
+  readonly repetitions: number;
+  readonly rootSeed: number;
+  readonly seedStrategy: SeedStrategy;
+  readonly effectiveSeeds: readonly string[];
 }
 
 interface AdapterCollection {
@@ -145,6 +158,60 @@ function deriveSeed(rootSeed: number, taskContentHash: string, repetition: numbe
     .update(canonicalJsonBytes({ repetition, rootSeed, taskContentHash }))
     .digest("hex")
     .slice(0, 16);
+}
+
+function optionalPolicyInteger(
+  policy: Readonly<Record<string, unknown>>,
+  field: "n" | "seed",
+  owner: string
+): number | undefined {
+  const value = policy[field];
+  if (value === undefined) return undefined;
+  if (typeof value === "number" && Number.isSafeInteger(value)) return value;
+  throw new AssayError(
+    "internal_invariant",
+    `internal_invariant: validated ${owner} run_policy.${field} was not an integer`
+  );
+}
+
+function taskSeedStrategy(policy: Readonly<Record<string, unknown>>, taskId: string): SeedStrategy {
+  const value = policy["seed_strategy"];
+  if (value === undefined || value === "derived") return "derived";
+  if (value === "fixed") return "fixed";
+  throw new AssayError(
+    "internal_invariant",
+    `internal_invariant: validated task ${taskId} run_policy.seed_strategy was unsupported`
+  );
+}
+
+function resolveTaskExecutionPolicies(
+  suite: PreparedSuite,
+  globalRunsOverride: number | undefined,
+  configuredRunsDefault: number,
+  invocationSeed: number | undefined
+): readonly TaskExecutionPolicy[] {
+  const suitePolicy = suiteRunPolicy(suite);
+  const suiteRuns = optionalPolicyInteger(suitePolicy, "n", `suite ${suite.source.suite.document["id"]}`);
+  return suite.tasks.map((task) => {
+    const policy = taskRunPolicy(task);
+    const repetitions = globalRunsOverride ??
+      optionalPolicyInteger(policy, "n", `task ${task.id}`) ??
+      suiteRuns ??
+      configuredRunsDefault;
+    const rootSeed = invocationSeed ?? optionalPolicyInteger(policy, "seed", `task ${task.id}`) ?? 0;
+    const seedStrategy = taskSeedStrategy(policy, task.id);
+    return {
+      task,
+      repetitions,
+      rootSeed,
+      seedStrategy,
+      effectiveSeeds: Array.from({ length: repetitions }, (_, repetition) => deriveSeed(
+        rootSeed,
+        task.source.contentHash,
+        seedStrategy === "fixed" ? 0 : repetition
+      ))
+    };
+  });
 }
 
 function resultWithoutCheckerExtensions(result: AssertionResult): AssertionResult {
@@ -434,6 +501,7 @@ export function redactAdapterEventBatch(
 }
 
 function trajectoryBytes(
+  plan: PlannedTaskRun,
   collection: AdapterCollection,
   knownHashes: ReadonlySet<string>
 ): Uint8Array {
@@ -448,6 +516,13 @@ function trajectoryBytes(
   return canonicalJsonBytes({
     trajectoryVersion: 1,
     redactionRulesetVersion: REDACTION_RULESET_VERSION,
+    taskRunId: plan.taskRunId,
+    taskId: plan.task.id,
+    taskContentHash: plan.task.source.contentHash,
+    repetition: plan.repetition,
+    rootSeed: plan.rootSeed,
+    seedStrategy: plan.seedStrategy,
+    effectiveSeed: plan.seed,
     descriptor: collection.result.descriptor,
     events: collection.events,
     eventRedactionManifests: collection.eventManifests,
@@ -644,7 +719,12 @@ function assayEventsForTask(
   }
   if (lifecycle.state === "scored") {
     events.push(event("TaskRunCompleted", runId, timestamp, {
-      outcome: lifecycle.outcome
+      outcome: lifecycle.outcome,
+      taskContentHash: plan.task.source.contentHash,
+      repetition: plan.repetition,
+      rootSeed: plan.rootSeed,
+      seedStrategy: plan.seedStrategy,
+      effectiveSeed: plan.seed
     }, plan.taskRunId));
   }
   return events;
@@ -691,8 +771,9 @@ function dryRunPlan(
   invocation: RunInvocation,
   suite: PreparedSuite,
   adapter: string,
-  runsPerTask: number,
-  rootSeed: number,
+  configuredRunsPerTask: number,
+  invocationRootSeed: number,
+  taskPolicies: readonly TaskExecutionPolicy[],
   configHash: string,
   pricingCatalogVersion: string
 ): Readonly<Record<string, unknown>> {
@@ -703,16 +784,19 @@ function dryRunPlan(
     suiteContentHash: suite.source.suiteContentHash,
     variant: invocation.variant,
     adapter,
-    runsPerTask,
-    rootSeed,
+    runsPerTask: configuredRunsPerTask,
+    rootSeed: invocationRootSeed,
     isolation: "unsafe_host",
     pricingCatalogVersion,
     estimatedSpendCeilingUsd: 0,
     configHash,
-    tasks: suite.tasks.map((task) => ({
-      id: task.id,
-      contentHash: task.source.contentHash,
-      repetitions: runsPerTask
+    tasks: taskPolicies.map((policy) => ({
+      id: policy.task.id,
+      contentHash: policy.task.source.contentHash,
+      repetitions: policy.repetitions,
+      rootSeed: policy.rootSeed,
+      seedStrategy: policy.seedStrategy,
+      effectiveSeeds: policy.effectiveSeeds
     }))
   };
 }
@@ -734,12 +818,14 @@ export async function executeRunCommand(
     ...(taskNetworkAllowlist ? { taskNetworkAllowlist: true } : {}),
     ...(suiteDeclaresDollarBudget(suite) ? { declaredDollarBudget: true } : {})
   });
-  const suitePolicy = suiteRunPolicy(suite);
-  const configNIsDefault = resolvedConfig.sources.runsPerTask.kind === "default";
-  const runsPerTask = configNIsDefault && typeof suitePolicy["n"] === "number"
-    ? suitePolicy["n"]
-    : resolvedConfig.config.runsPerTask;
-  const rootSeed = invocation.seed ?? 0;
+  const configuredRunsPerTask = resolvedConfig.config.runsPerTask;
+  const invocationRootSeed = invocation.seed ?? 0;
+  const taskPolicies = resolveTaskExecutionPolicies(
+    suite,
+    resolvedConfig.sources.runsPerTask.kind === "default" ? undefined : configuredRunsPerTask,
+    configuredRunsPerTask,
+    invocation.seed
+  );
   const variantAdapter = variant["adapter"];
   const selectedAdapter = invocation.adapter ?? variantAdapter ?? resolvedConfig.config.defaultAdapter;
   const adapter = normalizedAdapterId(selectedAdapter);
@@ -780,8 +866,9 @@ export async function executeRunCommand(
       invocation,
       suite,
       adapter,
-      runsPerTask,
-      rootSeed,
+      configuredRunsPerTask,
+      invocationRootSeed,
+      taskPolicies,
       resolvedConfig.configHash,
       resolvedConfig.config.pricingCatalogVersion
     ))}\n`);
@@ -807,12 +894,14 @@ export async function executeRunCommand(
   ]);
   const replayingTaskRunIds = new ReplayingIdSource(runtime.taskRunIdSource);
   const plans: PlannedTaskRun[] = [];
-  for (const task of suite.tasks) {
-    for (let repetition = 0; repetition < runsPerTask; repetition += 1) {
+  for (const policy of taskPolicies) {
+    for (let repetition = 0; repetition < policy.repetitions; repetition += 1) {
       plans.push({
-        task,
+        task: policy.task,
         repetition,
-        seed: deriveSeed(rootSeed, task.source.contentHash, repetition),
+        rootSeed: policy.rootSeed,
+        seedStrategy: policy.seedStrategy,
+        seed: policy.effectiveSeeds[repetition]!,
         taskRunId: replayingTaskRunIds.reserve()
       });
     }
@@ -836,18 +925,30 @@ export async function executeRunCommand(
       adapterId: adapter,
       adapterVersion: "1.0.0",
       modelId: model,
-      seed: rootSeed,
+      seed: invocationRootSeed,
       harnessVersion: HARNESS_VERSION,
-      runsPerTask,
+      runsPerTask: configuredRunsPerTask,
       status: "in_progress",
       isolation: "unsafe_host"
     });
     await appendEventBatch(store, runId, [event("RunPlanned", runId, runtime.clock.wallTime(), {
       suiteContentHash: suite.source.suiteContentHash,
       configHash: resolvedConfig.configHash,
+      taskPolicies: taskPolicies.map((policy) => ({
+        taskId: policy.task.id,
+        taskContentHash: policy.task.source.contentHash,
+        repetitions: policy.repetitions,
+        rootSeed: policy.rootSeed,
+        seedStrategy: policy.seedStrategy,
+        effectiveSeeds: policy.effectiveSeeds
+      })),
       tasks: plans.map((plan) => ({
         taskId: plan.task.id,
+        taskRunId: plan.taskRunId,
+        taskContentHash: plan.task.source.contentHash,
         repetition: plan.repetition,
+        rootSeed: plan.rootSeed,
+        seedStrategy: plan.seedStrategy,
         seed: plan.seed
       }))
     })], sequence);
@@ -887,7 +988,7 @@ export async function executeRunCommand(
         seal: async (_currentPlan, workspace, collection) => ({
           workspace,
           collection,
-          trajectoryBytes: trajectoryBytes(collection, knownHashes),
+          trajectoryBytes: trajectoryBytes(plan, collection, knownHashes),
           snapshotBytes: await snapshotWorkspace(workspace.workspaceRoot, knownHashes),
           assertionResults: []
         }),
