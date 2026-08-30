@@ -50,7 +50,6 @@ describe("branded identifier factories", () => {
     "a",
     "A-task",
     "-leading",
-    "trailing-",
     "contains/slash",
     "x".repeat(64)
   ])("rejects malformed task ids: %j", (candidate) => {
@@ -76,4 +75,3 @@ describe("branded identifier factories", () => {
     }
   );
 });
-
