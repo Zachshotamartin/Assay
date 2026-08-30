@@ -76,7 +76,7 @@ describe("diff_matches", () => {
         "diff --git a/src/a.ts b/src/a.ts",
         "--- a/src/a.ts",
         "+++ b/src/a.ts",
-        "@@ -80,2 +70,2 @@",
+        "@@ -80 +70 @@",
         "-four",
         "+FOUR",
         "@@ -10,3 +20,3 @@",
