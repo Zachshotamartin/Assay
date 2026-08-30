@@ -103,5 +103,7 @@ describe("R1 CI workflow contract", () => {
     expect(Object.keys(value.jobs?.["e2e-simulated"]?.env ?? {}).some((name) =>
       name.startsWith("ASSAY_")
     )).toBe(false);
+    expect(value.jobs?.["e2e-simulated"]?.env?.["GOLDEN_POLICY_REVIEW_TEXT"])
+      .toContain("github.event.head_commit.message");
   });
 });
