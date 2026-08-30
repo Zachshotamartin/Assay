@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://assay.dev/schemas/adapter/run-spec.v1.schema.json",
+  "title": "assay-adapter/1 run specification",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "type", "contract", "task_id", "task_run_id", "prompt", "workspace_path",
+    "seed", "env", "limits", "budgets_advisory"
+  ],
+  "properties": {
+    "type": { "const": "run_spec" },
+    "contract": { "const": "assay-adapter/1" },
+    "task_id": { "type": "string" },
+    "task_run_id": { "type": "string" },
+    "prompt": { "type": "string" },
+    "workspace_path": { "type": "string" },
+    "seed": { "type": "string" },
+    "env": {
+      "type": "object",
+      "additionalProperties": { "type": "string" }
+    },
+    "limits": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["wall_clock_ms"],
+      "properties": {
+        "wall_clock_ms": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "budgets_advisory": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "total_tokens": { "type": "integer", "minimum": 0 },
+        "tool_calls": { "type": "integer", "minimum": 0 },
+        "usd_micros": { "type": "integer", "minimum": 0 }
+      }
+    }
+  }
+}

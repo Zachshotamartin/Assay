@@ -1,0 +1,252 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://assay.dev/schemas/adapter/adapter-event.v1.schema.json",
+  "title": "assay-adapter/1 event",
+  "oneOf": [
+    { "$ref": "#/$defs/sessionStarted" },
+    { "$ref": "#/$defs/modelRequest" },
+    { "$ref": "#/$defs/modelResponse" },
+    { "$ref": "#/$defs/toolCall" },
+    { "$ref": "#/$defs/toolResult" },
+    { "$ref": "#/$defs/usage" },
+    { "$ref": "#/$defs/textOutput" },
+    { "$ref": "#/$defs/runCompleted" },
+    { "$ref": "#/$defs/runFailed" },
+    { "$ref": "#/$defs/log" }
+  ],
+  "$defs": {
+    "envelope": {
+      "type": "object",
+      "required": ["type", "seq", "ts"],
+      "properties": {
+        "type": { "type": "string" },
+        "seq": { "type": "integer", "minimum": 1 },
+        "ts": {
+          "type": "string",
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{3}Z$"
+        }
+      }
+    },
+    "model": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["provider", "model", "family"],
+      "properties": {
+        "provider": { "type": "string" },
+        "model": { "type": "string" },
+        "family": { "type": "string" }
+      }
+    },
+    "sessionStarted": {
+      "allOf": [
+        { "$ref": "#/$defs/envelope" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "seq", "ts", "session_id"],
+          "properties": {
+            "type": { "const": "session_started" },
+            "seq": { "type": "integer", "minimum": 1 },
+            "ts": { "type": "string" },
+            "session_id": { "type": "string" }
+          }
+        }
+      ]
+    },
+    "modelRequest": {
+      "allOf": [
+        { "$ref": "#/$defs/envelope" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "type", "seq", "ts", "request_id", "turn", "model", "message_count",
+            "input_summary_sha256"
+          ],
+          "properties": {
+            "type": { "const": "model_request" },
+            "seq": { "type": "integer", "minimum": 1 },
+            "ts": { "type": "string" },
+            "request_id": { "type": "string" },
+            "turn": { "type": "integer", "minimum": 0 },
+            "model": { "$ref": "#/$defs/model" },
+            "message_count": { "type": "integer", "minimum": 0 },
+            "input_summary_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+          }
+        }
+      ]
+    },
+    "modelResponse": {
+      "allOf": [
+        { "$ref": "#/$defs/envelope" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "seq", "ts", "request_id", "status", "latency_ms"],
+          "properties": {
+            "type": { "const": "model_response" },
+            "seq": { "type": "integer", "minimum": 1 },
+            "ts": { "type": "string" },
+            "request_id": { "type": "string" },
+            "status": { "enum": ["ok", "provider_error", "timeout"] },
+            "stop_reason": {
+              "oneOf": [
+                { "enum": ["end_turn", "tool_use", "max_tokens", "refusal", "other"] },
+                { "type": "null" }
+              ]
+            },
+            "latency_ms": { "type": "integer", "minimum": 0 },
+            "text": {
+              "oneOf": [
+                { "type": "string" },
+                { "type": "null" }
+              ]
+            }
+          },
+          "allOf": [
+            {
+              "if": { "properties": { "status": { "const": "ok" } }, "required": ["status"] },
+              "then": {
+                "required": ["stop_reason"],
+                "properties": {
+                  "stop_reason": { "enum": ["end_turn", "tool_use", "max_tokens", "refusal", "other"] }
+                }
+              },
+              "else": {
+                "properties": { "stop_reason": { "type": "null" } }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "toolCall": {
+      "allOf": [
+        { "$ref": "#/$defs/envelope" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "seq", "ts", "call_id", "request_id", "tool", "args"],
+          "properties": {
+            "type": { "const": "tool_call" },
+            "seq": { "type": "integer", "minimum": 1 },
+            "ts": { "type": "string" },
+            "call_id": { "type": "string" },
+            "request_id": { "type": "string" },
+            "tool": { "type": "string" },
+            "args": { "type": "object" }
+          }
+        }
+      ]
+    },
+    "toolResult": {
+      "allOf": [
+        { "$ref": "#/$defs/envelope" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "seq", "ts", "call_id", "status", "result", "duration_ms"],
+          "properties": {
+            "type": { "const": "tool_result" },
+            "seq": { "type": "integer", "minimum": 1 },
+            "ts": { "type": "string" },
+            "call_id": { "type": "string" },
+            "status": { "enum": ["ok", "error", "timeout"] },
+            "result": { "type": "string" },
+            "duration_ms": { "type": "integer", "minimum": 0 }
+          }
+        }
+      ]
+    },
+    "usage": {
+      "allOf": [
+        { "$ref": "#/$defs/envelope" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "type", "seq", "ts", "request_id", "prompt_tokens", "completion_tokens",
+            "total_tokens", "source"
+          ],
+          "properties": {
+            "type": { "const": "usage" },
+            "seq": { "type": "integer", "minimum": 1 },
+            "ts": { "type": "string" },
+            "request_id": { "type": "string" },
+            "prompt_tokens": { "type": "integer", "minimum": 0 },
+            "completion_tokens": { "type": "integer", "minimum": 0 },
+            "total_tokens": { "type": "integer", "minimum": 0 },
+            "cost_usd_micros": { "type": "integer", "minimum": 0 },
+            "source": { "enum": ["provider", "synthetic"] }
+          }
+        }
+      ]
+    },
+    "textOutput": {
+      "allOf": [
+        { "$ref": "#/$defs/envelope" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "seq", "ts", "text"],
+          "properties": {
+            "type": { "const": "text_output" },
+            "seq": { "type": "integer", "minimum": 1 },
+            "ts": { "type": "string" },
+            "text": { "type": "string" }
+          }
+        }
+      ]
+    },
+    "runCompleted": {
+      "allOf": [
+        { "$ref": "#/$defs/envelope" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "seq", "ts", "summary"],
+          "properties": {
+            "type": { "const": "run_completed" },
+            "seq": { "type": "integer", "minimum": 1 },
+            "ts": { "type": "string" },
+            "summary": { "type": "string" }
+          }
+        }
+      ]
+    },
+    "runFailed": {
+      "allOf": [
+        { "$ref": "#/$defs/envelope" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "seq", "ts", "category", "message"],
+          "properties": {
+            "type": { "const": "run_failed" },
+            "seq": { "type": "integer", "minimum": 1 },
+            "ts": { "type": "string" },
+            "category": { "enum": ["agent_gave_up", "agent_crashed", "provider_error", "internal"] },
+            "message": { "type": "string" }
+          }
+        }
+      ]
+    },
+    "log": {
+      "allOf": [
+        { "$ref": "#/$defs/envelope" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "seq", "ts", "level", "message"],
+          "properties": {
+            "type": { "const": "log" },
+            "seq": { "type": "integer", "minimum": 1 },
+            "ts": { "type": "string" },
+            "level": { "enum": ["debug", "info", "warn", "error"] },
+            "message": { "type": "string" }
+          }
+        }
+      ]
+    }
+  }
+}

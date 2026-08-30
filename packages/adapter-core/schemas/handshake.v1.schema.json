@@ -1,0 +1,80 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://assay.dev/schemas/adapter/handshake.v1.schema.json",
+  "title": "assay-adapter/1 handshake",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["type", "seq", "contract", "adapter", "tier", "capabilities"],
+  "properties": {
+    "type": { "const": "handshake" },
+    "seq": { "const": 1 },
+    "contract": { "type": "string", "pattern": "^assay-adapter/(0|[1-9][0-9]*)$" },
+    "adapter": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "version"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z0-9-]{1,64}$" },
+        "version": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-(?:0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*)(?:\\.(?:0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*))*)?(?:\\+[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?$"
+        }
+      }
+    },
+    "tier": { "enum": ["full", "trajectory", "black_box"] },
+    "model": { "$ref": "#/$defs/modelOrNull" },
+    "tool_catalog": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/tool" }
+    },
+    "capabilities": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["usage_reporting", "cost_reporting", "streaming_text"],
+      "properties": {
+        "usage_reporting": { "type": "boolean" },
+        "cost_reporting": { "type": "boolean" },
+        "streaming_text": { "type": "boolean" }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "tier": { "enum": ["full", "trajectory"] } }, "required": ["tier"] },
+      "then": {
+        "required": ["model", "tool_catalog"],
+        "properties": {
+          "model": { "$ref": "#/$defs/model" },
+          "tool_catalog": true
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "model": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["provider", "model", "family"],
+      "properties": {
+        "provider": { "type": "string" },
+        "model": { "type": "string" },
+        "family": { "type": "string" }
+      }
+    },
+    "modelOrNull": {
+      "oneOf": [
+        { "$ref": "#/$defs/model" },
+        { "type": "null" }
+      ]
+    },
+    "tool": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "semantic_class"],
+      "properties": {
+        "name": { "type": "string" },
+        "semantic_class": { "enum": ["read", "write", "execute"] }
+      }
+    }
+  }
+}

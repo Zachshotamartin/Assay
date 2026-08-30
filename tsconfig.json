@@ -3,6 +3,7 @@
   "references": [
     { "path": "scripts" },
     { "path": "packages/contracts" },
+    { "path": "packages/adapter-core" },
     { "path": "packages/task-format" },
     { "path": "apps/cli" }
   ]

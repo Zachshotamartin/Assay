@@ -37,7 +37,7 @@ const requiredByEvent = {
     "input_summary_sha256"
   ],
   model_response: [
-    "type", "seq", "ts", "request_id", "status", "stop_reason", "latency_ms", "text"
+    "type", "seq", "ts", "request_id", "status", "stop_reason", "latency_ms"
   ],
   tool_call: ["type", "seq", "ts", "call_id", "request_id", "tool", "args"],
   tool_result: ["type", "seq", "ts", "call_id", "status", "result", "duration_ms"],
@@ -174,6 +174,13 @@ describe("assay-adapter/1 handshake negotiation", () => {
     );
   });
 
+  it("enforces SemVer, including numeric prerelease leading-zero rejection", () => {
+    expectCategory(
+      () => parseAdapterHandshakeFrame(fixture("reject", "handshake-invalid-semver.json")),
+      "adapter_protocol_error"
+    );
+  });
+
   it("requires model and tool_catalog for full and trajectory tiers", () => {
     for (const field of ["model", "tool_catalog"] as const) {
       const value = JSON.parse(fixture("accept", "handshake-full.json")) as Record<string, unknown>;
@@ -205,6 +212,10 @@ describe("assay-adapter/1 run specification", () => {
     );
     expectCategory(
       () => parseAdapterRunSpecFrame(JSON.stringify({ ...value, seed: 42 })),
+      "adapter_protocol_error"
+    );
+    expectCategory(
+      () => parseAdapterRunSpecFrame(JSON.stringify({ ...value, task_id: "INVALID" })),
       "adapter_protocol_error"
     );
   });

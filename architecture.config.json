@@ -1,6 +1,7 @@
 {
   "workspaces": {
     "apps/cli": ["packages/contracts"],
+    "packages/adapter-core": ["packages/contracts"],
     "packages/contracts": [],
     "packages/task-format": ["packages/contracts"]
   }
