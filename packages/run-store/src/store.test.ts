@@ -298,13 +298,13 @@ describe("R1.12 store core", () => {
     await store.close();
   });
 
-  it("refuses unknown schema versions without implicitly migrating", async () => {
+  it("refuses older and newer schema versions without implicitly migrating", async () => {
     const projectRoot = await temporaryProject();
     const store = await openRunStore(storeOptions(projectRoot));
     await store.close();
 
     const database = rawDatabase(projectRoot);
-    database.prepare("UPDATE schema_meta SET version = 2").run();
+    database.prepare("UPDATE schema_meta SET version = 0").run();
     database.close();
 
     await expect(openRunStore(storeOptions(projectRoot))).rejects.toMatchObject({
@@ -312,9 +312,19 @@ describe("R1.12 store core", () => {
       message: expect.stringContaining("assay db migrate")
     });
 
-    const verify = rawDatabase(projectRoot);
-    expect(verify.prepare("SELECT version FROM schema_meta").get()).toEqual({ version: 2 });
-    verify.close();
+    const newer = rawDatabase(projectRoot);
+    expect(newer.prepare("SELECT version FROM schema_meta").get()).toEqual({ version: 0 });
+    newer.prepare("UPDATE schema_meta SET version = 2").run();
+    newer.close();
+
+    await expect(openRunStore(storeOptions(projectRoot))).rejects.toMatchObject({
+      category: "storage_migration_required",
+      message: expect.stringContaining("upgrade the Assay binary")
+    });
+
+    const unchanged = rawDatabase(projectRoot);
+    expect(unchanged.prepare("SELECT version FROM schema_meta").get()).toEqual({ version: 2 });
+    unchanged.close();
   });
 
   it("bounds writer-lock acquisition and identifies the owning process", async () => {
