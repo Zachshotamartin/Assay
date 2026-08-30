@@ -20,7 +20,7 @@ const EXIT_4 = [
   "comparison_invalid"
 ] as const;
 
-const EXIT_2 = ["usage_unreconciled", "budget_exceeded"] as const;
+const EXIT_2 = ["budget_exceeded"] as const;
 
 const EXIT_5 = [
   "fixture_unavailable",
@@ -36,6 +36,7 @@ const EXIT_5 = [
   "provider_rate_limit",
   "provider_transient",
   "provider_invalid_response",
+  "usage_unreconciled",
   "assertion_error",
   "judge_unavailable",
   "storage_locked",
@@ -94,7 +95,9 @@ describe("Assay error taxonomy", () => {
   it("maps cancellation to 6 and applies product precedence", () => {
     expect(exitCodeForCategory("cancelled")).toBe(6);
     expect(aggregateExitCode([1, 2, 3, 4, 5])).toBe(5);
-    expect(aggregateExitCode([5, 6])).toBe(6);
+    expect(aggregateExitCode([5, 6])).toBe(5);
+    expect(aggregateExitCode([6, 3, 2, 1])).toBe(6);
+    expect(aggregateExitCode([3, 2, 1])).toBe(3);
     expect(aggregateExitCode([])).toBe(0);
   });
 
@@ -129,4 +132,3 @@ describe("Assay error taxonomy", () => {
     expect(isFailClosedCategory("budget_exceeded")).toBe(false);
   });
 });
-
