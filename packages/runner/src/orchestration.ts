@@ -132,10 +132,10 @@ export async function executeTaskRun<TPlan, TWorkspace, TAgent, TCollection, TEv
       });
     }
 
+    await cleanup();
     persistenceAttempted = true;
     await stages.persist(plan, lifecycle, evidence);
     advance({ type: "durable_write_acknowledged" });
-    await cleanup();
     advance({ type: "completion_acknowledged" });
   } catch (error) {
     if (lifecycle.state !== "completed" && lifecycle.state !== "failed_infrastructure" &&
