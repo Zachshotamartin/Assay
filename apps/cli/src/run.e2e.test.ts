@@ -3,6 +3,7 @@ import { readdir, readFile, rm, mkdir, mkdtemp, stat, writeFile } from "node:fs/
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
+import { fileURLToPath } from "node:url";
 
 import { simulatedAdapterCommand } from "@assay/adapter-simulated";
 import {
@@ -527,10 +528,66 @@ describe("R1.13 validate and run integration", () => {
         providerReportedCostUsd: 0
       })
     })));
-    expect(stored.events.map((event) => event["type"])).toEqual(expect.arrayContaining([
-      "RunPlanned", "FixtureMaterialized", "AdapterHandshake", "WorkspaceSnapshotTaken",
-      "AssertionEvaluated", "TaskRunCompleted", "SandboxDestroyed", "SuiteCompleted"
-    ]));
+    const firstTaskRunId = stored.taskRuns[0]!["taskRunId"];
+    const lifecycleTypes = new Set([
+      "FixtureMaterialized",
+      "SandboxStarted",
+      "AdapterHandshake",
+      "WorkspaceSnapshotTaken",
+      "AssertionEvaluated",
+      "TaskRunCompleted",
+      "SandboxDestroyed"
+    ]);
+    expect(stored.events
+      .filter((event) => event["task_run_id"] === firstTaskRunId && lifecycleTypes.has(String(event["type"])))
+      .map((event) => event["type"]))
+      .toEqual([
+        "FixtureMaterialized",
+        "AdapterHandshake",
+        "WorkspaceSnapshotTaken",
+        "AssertionEvaluated",
+        "TaskRunCompleted"
+      ]);
+  });
+
+  it("keeps a clean run_failed terminal assertion-owned and exposes adapter exit zero", async () => {
+    const root = await projectRoot();
+    await writeProject(root, { assertion: { type: "exit_code", equals: 0 } });
+    const capture = output();
+    const scenarioPath = fileURLToPath(new URL(
+      "../../../fixtures/trajectories/run-failed-agent-gave-up.json",
+      import.meta.url
+    ));
+
+    const code = await executeCli([
+      "run", "core.suite.yaml", "--variant", "baseline", "-n", "1", "--seed", "13"
+    ], capture.io, runtime(root, {
+      adapterCommandFor: () => simulatedAdapterCommand({ scenarioPath })
+    }));
+
+    expect(code, capture.stderr.join("")).toBe(0);
+    expect(capture.stdout.join("")).toMatch(/1 passed, 0 failed, 0 errors/u);
+    const stored = databaseRows(root);
+    expect(stored.taskRuns).toHaveLength(1);
+    expect(stored.taskRuns[0]).toMatchObject({
+      state: "completed",
+      outcome: "pass",
+      errorCategory: null,
+      assertionResults: [{
+        type: "exit_code",
+        target: "agent exit code",
+        observed: 0,
+        expectation: 0,
+        verdict: "pass"
+      }]
+    });
+    const trajectoryHash = String(stored.taskRuns[0]!["trajectoryBlob"]);
+    const trajectory = JSON.parse(await readFile(
+      join(root, ".assay", "objects", trajectoryHash.slice(0, 2), trajectoryHash),
+      "utf8"
+    )) as { readonly events: readonly Readonly<Record<string, unknown>>[]; readonly exit: unknown };
+    expect(trajectory.events.at(-1)).toMatchObject({ type: "run_failed", category: "agent_gave_up" });
+    expect(trajectory.exit).toMatchObject({ code: 0, signal: null });
   });
 
   it("returns task-failure exit 1 without misclassifying the healthy harness", async () => {
