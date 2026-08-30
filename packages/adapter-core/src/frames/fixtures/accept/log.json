@@ -1,0 +1,7 @@
+{
+  "type": "log",
+  "seq": 9,
+  "ts": "2026-01-02T03:04:05.006Z",
+  "level": "info",
+  "message": "script complete"
+}

@@ -1,0 +1,9 @@
+{
+  "type": "tool_result",
+  "seq": 6,
+  "ts": "2026-01-02T03:04:05.006Z",
+  "call_id": "call-1",
+  "status": "ok",
+  "result": "export {};",
+  "duration_ms": 4
+}

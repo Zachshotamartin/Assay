@@ -1,0 +1,12 @@
+{
+  "type": "run_spec",
+  "contract": "assay-adapter/1",
+  "task_id": "fix-null-deref",
+  "task_run_id": "018f0f5e-7b3c-7def-8abc-0123456789ab",
+  "prompt": "Fix the null dereference.",
+  "workspace_path": "/workspace",
+  "seed": "5f2a9c01d4e8b7a3",
+  "env": { "TASK_DECLARED_VAR": "value" },
+  "limits": { "wall_clock_ms": 600000 },
+  "budgets_advisory": { "total_tokens": 200000, "tool_calls": 100, "usd_micros": 500000 }
+}

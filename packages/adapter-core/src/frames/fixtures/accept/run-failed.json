@@ -1,0 +1,7 @@
+{
+  "type": "run_failed",
+  "seq": 10,
+  "ts": "2026-01-02T03:04:05.006Z",
+  "category": "agent_gave_up",
+  "message": "No safe next action."
+}

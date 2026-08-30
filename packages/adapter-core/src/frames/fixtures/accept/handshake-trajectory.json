@@ -1,0 +1,14 @@
+{
+  "type": "handshake",
+  "seq": 1,
+  "contract": "assay-adapter/1",
+  "adapter": { "id": "trajectory-adapter", "version": "2.3.4-beta.1+build.7" },
+  "tier": "trajectory",
+  "model": { "provider": "fixture", "model": "trajectory-v1", "family": "fixture" },
+  "tool_catalog": [],
+  "capabilities": {
+    "usage_reporting": false,
+    "cost_reporting": false,
+    "streaming_text": false
+  }
+}
