@@ -23,7 +23,6 @@ export type SchemaValidationResult =
 const ajv = new Ajv2020({
   allErrors: true,
   strict: true,
-  strictRequired: false,
   validateFormats: false
 });
 

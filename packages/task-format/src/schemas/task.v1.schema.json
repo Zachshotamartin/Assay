@@ -144,8 +144,22 @@
         "git_init": { "type": "boolean" }
       },
       "oneOf": [
-        { "required": ["path"], "not": { "required": ["archive"] } },
-        { "required": ["archive"], "not": { "required": ["path"] } }
+        {
+          "properties": { "path": { "$ref": "#/$defs/relativePath" } },
+          "required": ["path"],
+          "not": {
+            "properties": { "archive": { "type": "object" } },
+            "required": ["archive"]
+          }
+        },
+        {
+          "properties": { "archive": { "type": "object" } },
+          "required": ["archive"],
+          "not": {
+            "properties": { "path": { "type": "string" } },
+            "required": ["path"]
+          }
+        }
       ]
     },
     "prompt": {
@@ -218,8 +232,16 @@
             "properties": { "network": { "const": "allowlist" } },
             "required": ["network"]
           },
-          "then": { "required": ["hosts"] },
-          "else": { "not": { "required": ["hosts"] } }
+          "then": {
+            "properties": { "hosts": { "type": "array" } },
+            "required": ["hosts"]
+          },
+          "else": {
+            "not": {
+              "properties": { "hosts": { "type": "array" } },
+              "required": ["hosts"]
+            }
+          }
         }
       ]
     },
@@ -296,8 +318,22 @@
         "max_bytes": { "type": "integer", "minimum": 1 }
       },
       "oneOf": [
-        { "required": ["literal"], "not": { "required": ["regex"] } },
-        { "required": ["regex"], "not": { "required": ["literal"] } }
+        {
+          "properties": { "literal": { "type": "string" } },
+          "required": ["literal"],
+          "not": {
+            "properties": { "regex": { "type": "string" } },
+            "required": ["regex"]
+          }
+        },
+        {
+          "properties": { "regex": { "type": "string" } },
+          "required": ["regex"],
+          "not": {
+            "properties": { "literal": { "type": "string" } },
+            "required": ["literal"]
+          }
+        }
       ]
     },
     "jsonSchemaAssertion": {
@@ -344,9 +380,36 @@
         "timeout_ms": { "type": "integer", "minimum": 1000, "maximum": 3600000 }
       },
       "oneOf": [
-        { "required": ["equals"], "not": { "anyOf": [{ "required": ["contains"] }, { "required": ["regex"] }] } },
-        { "required": ["contains"], "not": { "anyOf": [{ "required": ["equals"] }, { "required": ["regex"] }] } },
-        { "required": ["regex"], "not": { "anyOf": [{ "required": ["equals"] }, { "required": ["contains"] }] } }
+        {
+          "properties": { "equals": { "type": "string" } },
+          "required": ["equals"],
+          "not": {
+            "anyOf": [
+              { "properties": { "contains": { "type": "string" } }, "required": ["contains"] },
+              { "properties": { "regex": { "type": "string" } }, "required": ["regex"] }
+            ]
+          }
+        },
+        {
+          "properties": { "contains": { "type": "string" } },
+          "required": ["contains"],
+          "not": {
+            "anyOf": [
+              { "properties": { "equals": { "type": "string" } }, "required": ["equals"] },
+              { "properties": { "regex": { "type": "string" } }, "required": ["regex"] }
+            ]
+          }
+        },
+        {
+          "properties": { "regex": { "type": "string" } },
+          "required": ["regex"],
+          "not": {
+            "anyOf": [
+              { "properties": { "equals": { "type": "string" } }, "required": ["equals"] },
+              { "properties": { "contains": { "type": "string" } }, "required": ["contains"] }
+            ]
+          }
+        }
       ]
     },
     "trajectoryAssertion": {
