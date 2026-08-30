@@ -9,9 +9,10 @@ stochastic comparison as a statistics problem, refusing to call a difference a
 regression without a significance test, confidence intervals, and stated
 power.
 
-> Assay is a fully specified, unimplemented evaluation harness. This
-> repository currently contains normative planning documents only. No command,
-> gate, or measurement described here exists yet.
+> Assay is under implementation. Gate R0 code and CI evidence exist on an
+> open pull request, but R0 is not accepted because required private-repository
+> branch protection and review controls are unavailable on the current GitHub
+> plan. No later product gate is accepted.
 
 The root [README](../README.md) is the quick orientation and current
 implementation snapshot. It states the honest status, the planned command

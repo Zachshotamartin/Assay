@@ -25,9 +25,10 @@ R0-R10 release evidence.
 
 Current baseline, stated verbatim wherever the current state is described:
 
-> Assay is a fully specified, unimplemented evaluation harness. This
-> repository currently contains normative planning documents only. No command,
-> gate, or measurement described here exists yet.
+> Assay is under implementation. Gate R0 code and CI evidence exist on an
+> open pull request, but R0 is not accepted because required private-repository
+> branch protection and review controls are unavailable on the current GitHub
+> plan. No later product gate is accepted.
 
 Assay's default architecture is one local CLI process (`assay`) operating on a
 project checkout, a per-project SQLite-plus-blob trace store under `.assay/`,

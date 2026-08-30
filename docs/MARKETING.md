@@ -4,9 +4,10 @@
 document drafts the public story Assay will tell once the release gates in
 [BUILD_PLAN.md](BUILD_PLAN.md) accept. Nothing here is publishable today:
 
-> Assay is a fully specified, unimplemented evaluation harness. This
-> repository currently contains normative planning documents only. No
-> command, gate, or measurement described here exists yet.
+> Assay is under implementation. Gate R0 code and CI evidence exist on an
+> open pull request, but R0 is not accepted because required private-repository
+> branch protection and review controls are unavailable on the current GitHub
+> plan. No later product gate is accepted.
 
 Under conflict rule 11 in [docs/README.md](README.md), this document is
 descriptive, not normative, and every claim in it is subordinate to gate

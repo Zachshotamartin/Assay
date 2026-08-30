@@ -147,9 +147,10 @@ CI workflow exists yet. Every gate in section 1.2 is planned.
 Until R1 is accepted, the truthful claim — used verbatim wherever the
 current state is described — is:
 
-> Assay is a fully specified, unimplemented evaluation harness. This
-> repository currently contains normative planning documents only. No
-> command, gate, or measurement described here exists yet.
+> Assay is under implementation. Gate R0 code and CI evidence exist on an
+> open pull request, but R0 is not accepted because required private-repository
+> branch protection and review controls are unavailable on the current GitHub
+> plan. No later product gate is accepted.
 
 ### 2.3 What may not be claimed
 
@@ -686,7 +687,7 @@ differentiating implementation.
 
 ## 5. R0 — Repository, Toolchain, and CI Identity
 
-**Status:** planned.
+**Status:** in progress.
 
 **Effort range:** 3–5 focused days, including GitHub verification and CI
 bring-up.

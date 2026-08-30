@@ -5,9 +5,10 @@ matrix, and checker file formats. Everything specified here is `planned`.
 
 Last revised: 2026-08-30
 
-> Assay is a fully specified, unimplemented evaluation harness. This
-> repository currently contains normative planning documents only. No command,
-> gate, or measurement described here exists yet.
+> Assay is under implementation. Gate R0 code and CI evidence exist on an
+> open pull request, but R0 is not accepted because required private-repository
+> branch protection and review controls are unavailable on the current GitHub
+> plan. No later product gate is accepted.
 
 This document controls the task schema. Where it conflicts with an accepted
 ADR, PRODUCT_REQUIREMENTS.md, METHODOLOGY.md, BUILD_PLAN.md, or
