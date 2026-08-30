@@ -8,7 +8,7 @@ import {
   unlink,
   type FileHandle
 } from "node:fs/promises";
-import { join, resolve } from "node:path";
+import { join, parse, resolve } from "node:path";
 
 import { AssayError, canonicalJson, type Clock } from "@assay/contracts";
 
@@ -62,7 +62,7 @@ async function ensurePrivateDirectory(path: string): Promise<void> {
     if (!isNodeError(error) || error.code !== "ENOENT") {
       throw error;
     }
-    await mkdir(path, { mode: 0o700 });
+    await mkdir(path, { mode: 0o700, recursive: true });
     created = true;
   }
 
@@ -71,7 +71,10 @@ async function ensurePrivateDirectory(path: string): Promise<void> {
   }
 }
 
-export async function resolveStorePaths(projectRoot: string): Promise<StorePaths> {
+export async function resolveStorePaths(
+  projectRoot: string,
+  configuredStorePath = ".assay"
+): Promise<StorePaths> {
   const absoluteProjectRoot = resolve(projectRoot);
   const projectMetadata = await lstat(absoluteProjectRoot).catch((cause: unknown) => {
     throw new AssayError(
@@ -87,7 +90,19 @@ export async function resolveStorePaths(projectRoot: string): Promise<StorePaths
     );
   }
 
-  const storeDirectory = join(absoluteProjectRoot, ".assay");
+  if (configuredStorePath.length === 0 || configuredStorePath.includes("\0")) {
+    throw new AssayError(
+      "invalid_configuration",
+      "invalid_configuration: storePath must be a non-empty filesystem path without NUL bytes; no store state changed; correct storePath"
+    );
+  }
+  const storeDirectory = resolve(absoluteProjectRoot, configuredStorePath);
+  if (storeDirectory === parse(storeDirectory).root) {
+    throw new AssayError(
+      "invalid_configuration",
+      "invalid_configuration: storePath must not be a filesystem root; no store state changed; choose a dedicated private directory"
+    );
+  }
   const objectsPath = join(storeDirectory, "objects");
   const temporaryPath = join(storeDirectory, "tmp");
   const quarantinePath = join(storeDirectory, "quarantine");

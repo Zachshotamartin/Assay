@@ -37,6 +37,7 @@ export interface StoreLockPolicy {
 
 export interface RunStoreOptions {
   readonly projectRoot: string;
+  readonly storePath?: string;
   readonly clock: Clock;
   readonly processId: number;
   readonly runIdSource: IdSource<RunId>;

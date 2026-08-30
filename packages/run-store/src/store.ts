@@ -1238,7 +1238,7 @@ class SqliteRunStore implements RunStore {
 export async function openRunStore(options: RunStoreOptions): Promise<RunStore> {
   let paths: StorePaths;
   try {
-    paths = await resolveStorePaths(options.projectRoot);
+    paths = await resolveStorePaths(options.projectRoot, options.storePath);
   } catch (error) {
     if (error instanceof AssayError) {
       throw error;
