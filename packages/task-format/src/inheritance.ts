@@ -1,4 +1,5 @@
-import { dirname, resolve } from "node:path";
+import { realpath as realpathFromDisk } from "node:fs/promises";
+import { dirname, isAbsolute, relative, resolve, sep } from "node:path";
 
 import {
   TaskFormatError,
@@ -15,7 +16,9 @@ export interface ResolvedTask extends LoadedYaml<TaskDocument> {
 }
 
 export interface InheritanceOptions {
+  readonly projectRoot: string;
   readonly loadTask?: (path: string) => Promise<LoadedYaml<TaskDocument>>;
+  readonly realpath?: (path: string) => Promise<string>;
 }
 
 class InheritanceError extends TaskFormatError {
@@ -49,6 +52,12 @@ class InheritanceError extends TaskFormatError {
 
 function own(document: TaskDocument, key: string): boolean {
   return Object.prototype.hasOwnProperty.call(document, key);
+}
+
+function isContained(projectRoot: string, candidate: string): boolean {
+  const fromRoot = relative(projectRoot, candidate);
+  return fromRoot === "" ||
+    (fromRoot !== ".." && !fromRoot.startsWith(`..${sep}`) && !isAbsolute(fromRoot));
 }
 
 function cloneValue(value: unknown): unknown {
@@ -181,15 +190,52 @@ function validateResolved(document: TaskDocument, filePath: string): void {
 
 export async function resolveTaskInheritance(
   task: LoadedYaml<TaskDocument>,
-  options: InheritanceOptions = {}
+  options: InheritanceOptions
 ): Promise<ResolvedTask> {
   const load = options.loadTask ?? loadTask;
+  const canonicalize = options.realpath ?? realpathFromDisk;
+  const lexicalProjectRoot = resolve(options.projectRoot);
+  let projectRoot: string;
+  try {
+    projectRoot = await canonicalize(lexicalProjectRoot);
+  } catch (error) {
+    throw new InheritanceError(
+      "task_invalid/path-escape",
+      task.path,
+      `task_invalid: project root could not be resolved: ${lexicalProjectRoot}`,
+      "Pass an existing project root and keep task references inside it.",
+      [task.path],
+      error
+    );
+  }
 
   const visit = async (
     current: LoadedYaml<TaskDocument>,
     traversal: readonly string[]
   ): Promise<ResolvedTask> => {
-    const currentPath = resolve(current.path);
+    const lexicalCurrentPath = resolve(current.path);
+    let currentPath: string;
+    try {
+      currentPath = await canonicalize(lexicalCurrentPath);
+    } catch (error) {
+      throw new InheritanceError(
+        "task_invalid/extends-unresolved",
+        lexicalCurrentPath,
+        `task_invalid: task path could not be resolved: ${lexicalCurrentPath}`,
+        "Correct the task path and ensure the file exists.",
+        [...traversal, lexicalCurrentPath],
+        error
+      );
+    }
+    if (!isContained(projectRoot, currentPath)) {
+      throw new InheritanceError(
+        "task_invalid/path-escape",
+        lexicalCurrentPath,
+        `task_invalid: task resolves outside project root: ${currentPath}`,
+        "Keep the task and every extends target inside the real project root.",
+        [...traversal, currentPath]
+      );
+    }
     const cycleStart = traversal.indexOf(currentPath);
     if (cycleStart >= 0) {
       const cycle = [...traversal.slice(cycleStart), currentPath];
@@ -243,7 +289,48 @@ export async function resolveTaskInheritance(
       );
     }
 
-    const parentPath = resolve(dirname(currentPath), parentReference);
+    if (isAbsolute(parentReference)) {
+      throw new InheritanceError(
+        "task_invalid/path-escape",
+        currentPath,
+        `task_invalid: extends must be relative and inside the project: ${parentReference}`,
+        "Use a relative *.task.yaml path whose real target is inside the project root.",
+        nextTraversal
+      );
+    }
+
+    const lexicalParentPath = resolve(dirname(currentPath), parentReference);
+    if (!isContained(projectRoot, lexicalParentPath)) {
+      throw new InheritanceError(
+        "task_invalid/path-escape",
+        currentPath,
+        `task_invalid: extends escapes the project root: ${lexicalParentPath}`,
+        "Use a relative *.task.yaml path inside the project root.",
+        [...nextTraversal, lexicalParentPath]
+      );
+    }
+    let parentPath: string;
+    try {
+      parentPath = await canonicalize(lexicalParentPath);
+    } catch (error) {
+      throw new InheritanceError(
+        "task_invalid/extends-unresolved",
+        currentPath,
+        `task_invalid: extends parent could not be resolved: ${lexicalParentPath}`,
+        "Correct the extends path and ensure the parent task exists.",
+        [...nextTraversal, lexicalParentPath],
+        error
+      );
+    }
+    if (!isContained(projectRoot, parentPath)) {
+      throw new InheritanceError(
+        "task_invalid/path-escape",
+        currentPath,
+        `task_invalid: extends target resolves outside the project root: ${parentPath}`,
+        "Replace the symlink or extends path with a task inside the real project root.",
+        [...nextTraversal, parentPath]
+      );
+    }
     let parent: LoadedYaml<TaskDocument>;
     try {
       parent = await load(parentPath);

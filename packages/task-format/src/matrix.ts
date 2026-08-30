@@ -122,7 +122,7 @@ function excluded(
   );
 }
 
-const PLACEHOLDER = /\$\{\{\s*matrix\.([a-z0-9][a-z0-9-]{1,62})\s*\}\}/gu;
+const PLACEHOLDER = /\$\{\{\s*matrix\.([a-z0-9][a-z0-9-]{0,62})\s*\}\}/gu;
 
 function substitute(
   value: unknown,
@@ -274,6 +274,16 @@ export function expandMatrix(
   const seen = new Map<string, Readonly<Record<string, MatrixScalar>>>();
   return combinations.map((combination) => {
     const id = instanceId(baseId, combination);
+    if (Array.from(id).length > 128) {
+      throw matrixFailure(
+        "matrix-id-length",
+        matrix.path,
+        "$.axes",
+        `generated matrix id exceeds 128 characters: ${id}`,
+        "Shorten the base task id, axis names, or axis values.",
+        [combination]
+      );
+    }
     const prior = seen.get(id);
     if (prior !== undefined) {
       throw matrixFailure(
