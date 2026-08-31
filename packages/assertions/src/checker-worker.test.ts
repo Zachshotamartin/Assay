@@ -1,4 +1,6 @@
 import { mkdtemp, mkdir, readFile, realpath, rm, writeFile } from "node:fs/promises";
+import { once } from "node:events";
+import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -127,6 +129,8 @@ export async function check(_ctx: CheckerContext): Promise<CheckerVerdict> {
 
   it.each([
     ["Node builtin", `import { readFile } from "node:fs/promises";\n${CHECKER_IMPORTS}\nexport async function check(_ctx: CheckerContext): Promise<CheckerVerdict> { await readFile("/etc/passwd"); return { verdict: "pass", observed: "x", expectation: "x" }; }`],
+    ["node:net", `import { createConnection } from "node:net";\n${CHECKER_IMPORTS}\nexport async function check(_ctx: CheckerContext): Promise<CheckerVerdict> { createConnection({ host: "127.0.0.1", port: 1 }); return { verdict: "pass", observed: "x", expectation: "x" }; }`],
+    ["node:http", `import { get } from "node:http";\n${CHECKER_IMPORTS}\nexport async function check(_ctx: CheckerContext): Promise<CheckerVerdict> { get("http://127.0.0.1/"); return { verdict: "pass", observed: "x", expectation: "x" }; }`],
     ["runtime checker API import", `import { CheckerContext } from "@assay/checker-api";\nexport async function check(_ctx: CheckerContext) { return { verdict: "pass", observed: "x", expectation: "x" }; }`],
     ["third-party package", `${CHECKER_IMPORTS}\nimport value from "some-package";\nexport async function check(_ctx: CheckerContext): Promise<CheckerVerdict> { return { verdict: "pass", observed: String(value), expectation: "x" }; }`],
     ["dynamic import", `${CHECKER_IMPORTS}\nexport async function check(_ctx: CheckerContext): Promise<CheckerVerdict> { await import("node:fs"); return { verdict: "pass", observed: "x", expectation: "x" }; }`],
@@ -324,6 +328,50 @@ export async function check(ctx: CheckerContext): Promise<CheckerVerdict> {
       nested: { value: 1 }
     });
     await expect(readFile(join(workspace, "value.txt"), "utf8")).resolves.toBe("workspace value");
+  });
+
+  it("refuses a real loopback network attempt with zero connections", async () => {
+    let connectionCount = 0;
+    const sentinel = createServer((socket) => {
+      connectionCount += 1;
+      socket.destroy();
+    });
+    sentinel.listen(0, "127.0.0.1");
+    await once(sentinel, "listening");
+    const address = sentinel.address();
+    if (address === null || typeof address === "string") {
+      throw new Error("loopback sentinel did not bind a TCP port");
+    }
+
+    const { project, workspace } = await checkerProject({
+      "checks/net-attempt.checker.ts": `${CHECKER_IMPORTS}
+export async function check(_ctx: CheckerContext): Promise<CheckerVerdict> {
+  const network = globalThis as unknown as { fetch(input: string): Promise<unknown> };
+  await network.fetch("http://127.0.0.1:${address.port}/checker-net-attempt");
+  return { verdict: "pass", observed: "connected", expectation: "network must be unavailable" };
+}
+`
+    });
+
+    let result: Awaited<ReturnType<typeof evaluateCheckerAssertion>> | undefined;
+    try {
+      result = await evaluateCheckerAssertion(
+        spec("checks/net-attempt.checker.ts"),
+        executionContext(project, workspace),
+        new AbortController().signal
+      );
+    } finally {
+      const closed = once(sentinel, "close");
+      sentinel.close();
+      await closed;
+    }
+
+    expect(connectionCount).toBe(0);
+    expect(result).toMatchObject({
+      verdict: "error",
+      errorCategory: "assertion_error",
+      message: expect.stringMatching(/fetch|function/iu)
+    });
   });
 
   it.each([
