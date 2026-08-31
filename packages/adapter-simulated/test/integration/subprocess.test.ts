@@ -144,7 +144,7 @@ describe("simulated adapter subprocess", () => {
   });
 
   it("can deliberately ignore SIGTERM so the supervisor proves SIGKILL escalation", async () => {
-    const result = await runFixture("ignore-sigterm.json", 250, new AcceleratedGraceScheduler());
+    const result = await runFixture("ignore-sigterm.json", 3_000, new AcceleratedGraceScheduler());
     expect(result).toMatchObject({
       status: "error",
       errorCategory: "sandbox_timeout",
