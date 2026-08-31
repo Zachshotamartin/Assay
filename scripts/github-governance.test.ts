@@ -26,7 +26,14 @@ describe("R0 GitHub governance payloads", () => {
 
     expect(checks.strict).toBe(true);
     expect(checks.checks).toEqual(
-      ["typecheck", "lint-docs", "unit-property", "arch-boundaries"].map((context) => ({
+      [
+        "typecheck",
+        "lint-docs",
+        "unit-property",
+        "arch-boundaries",
+        "e2e-simulated",
+        "store-core"
+      ].map((context) => ({
         context,
         app_id: 15368
       }))
