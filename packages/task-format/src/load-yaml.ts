@@ -12,6 +12,7 @@ import {
 import {
   validateSuiteDocument,
   validateMatrixDocument,
+  validateRubricDocument,
   validateTaskDocument,
   type SchemaValidationFailure,
   type SchemaValidationResult
@@ -20,11 +21,12 @@ import {
 export const MAX_YAML_FILE_BYTES = 1_048_576;
 const MAX_ALIAS_COUNT = 100;
 
-type YamlKind = "task" | "suite" | "matrix";
+export type YamlKind = "task" | "suite" | "matrix" | "rubric";
 type YamlCategory = Extract<AssayErrorCategory, "task_invalid" | "suite_invalid">;
 
 export type TaskDocument = Readonly<Record<string, unknown>>;
 export type SuiteDocument = Readonly<Record<string, unknown>>;
+export type RubricDocument = Readonly<Record<string, unknown>>;
 export type MatrixScalar = string | number | boolean;
 export type MatrixDocument = Readonly<Record<string, unknown>> & {
   readonly format_version: "1.0";
@@ -37,6 +39,13 @@ export interface LoadedYaml<TDocument extends Readonly<Record<string, unknown>>>
   readonly path: string;
   readonly source: string;
   readonly document: TDocument;
+}
+
+export interface YamlInspection<TDocument extends Readonly<Record<string, unknown>>> {
+  readonly source: string | undefined;
+  readonly document: TDocument | undefined;
+  readonly loaded: LoadedYaml<TDocument> | undefined;
+  readonly diagnostics: readonly TaskFormatError[];
 }
 
 export interface TaskFormatDiagnostic {
@@ -155,18 +164,26 @@ function yamlPathFor(segments: readonly string[]): string {
         : `[${JSON.stringify(segment)}]`)).join("")}`;
 }
 
-function positionForSchemaFailure(
+function positionForSchemaError(
   document: Document.Parsed<ParsedNode>,
   lineCounter: LineCounter,
-  schemaFailure: SchemaValidationFailure
+  error: SchemaValidationFailure["errors"][number] | undefined,
+  fallbackSegments: readonly string[] = []
 ): { readonly line: number; readonly column: number; readonly yamlPath: string } {
-  const first = schemaFailure.errors[0];
-  const segments = jsonPointerSegments(first?.instancePath ?? "");
-  const extraProperty = first?.keyword === "additionalProperties"
-    ? first.params["additionalProperty"]
+  const segments = error === undefined
+    ? [...fallbackSegments]
+    : jsonPointerSegments(error.instancePath);
+  const extraProperty = error?.keyword === "additionalProperties"
+    ? error.params["additionalProperty"]
     : undefined;
   if (typeof extraProperty === "string") {
     segments.push(extraProperty);
+  }
+  const missingProperty = error?.keyword === "required"
+    ? error.params["missingProperty"]
+    : undefined;
+  if (typeof missingProperty === "string") {
+    segments.push(missingProperty);
   }
 
   let node: unknown = document.contents;
@@ -180,6 +197,52 @@ function positionForSchemaFailure(
     column: location.col,
     yamlPath: yamlPathFor(segments)
   };
+}
+
+function positionForYamlPath(
+  document: Document.Parsed<ParsedNode>,
+  lineCounter: LineCounter,
+  yamlPath: string
+): { readonly line: number; readonly column: number; readonly yamlPath: string } {
+  const segments: string[] = [];
+  const matcher = /\.([A-Za-z_][A-Za-z0-9_]*)|\[([0-9]+)\]|\[("(?:[^"\\]|\\.)*")\]/guy;
+  matcher.lastIndex = 1;
+  while (matcher.lastIndex < yamlPath.length) {
+    const match = matcher.exec(yamlPath);
+    if (match === null) break;
+    if (match[1] !== undefined) segments.push(match[1]);
+    else if (match[2] !== undefined) segments.push(match[2]);
+    else if (match[3] !== undefined) segments.push(JSON.parse(match[3]) as string);
+  }
+  let node: unknown = document.contents;
+  let resolvedSegments = [...segments];
+  while (resolvedSegments.length > 0) {
+    node = document.getIn(resolvedSegments, true);
+    if (isNode(node)) break;
+    resolvedSegments = resolvedSegments.slice(0, -1);
+  }
+  const offset = isNode(node) && node.range != null ? node.range[0] : 0;
+  const location = lineCounter.linePos(offset);
+  return { line: location.line, column: location.col, yamlPath };
+}
+
+export function locateYamlPath(
+  source: string,
+  yamlPath: string
+): { readonly line: number; readonly column: number } {
+  const lineCounter = new LineCounter();
+  const document = parseDocument(source, {
+    lineCounter,
+    schema: "core",
+    strict: true,
+    uniqueKeys: true
+  });
+  const position = positionForYamlPath(
+    document as Document.Parsed<ParsedNode>,
+    lineCounter,
+    yamlPath
+  );
+  return { line: position.line, column: position.column };
 }
 
 function parsePlainDocument(
@@ -249,40 +312,149 @@ function parsePlainDocument(
   };
 }
 
+function schemaValidationFor(
+  value: unknown,
+  kind: YamlKind
+): SchemaValidationResult {
+  return kind === "task"
+    ? validateTaskDocument(value)
+    : kind === "suite"
+      ? validateSuiteDocument(value)
+      : kind === "matrix"
+        ? validateMatrixDocument(value)
+        : validateRubricDocument(value);
+}
+
+function rubricRuleDiagnostics(
+  parsed: ReturnType<typeof parsePlainDocument>,
+  filePath: string
+): readonly TaskFormatError[] {
+  const criteria = parsed.value["criteria"];
+  if (!Array.isArray(criteria)) return [];
+  const diagnostics: TaskFormatError[] = [];
+  const seen = new Map<string, number>();
+  const weights: number[] = [];
+  for (const [index, candidate] of criteria.entries()) {
+    if (typeof candidate !== "object" || candidate === null || Array.isArray(candidate)) continue;
+    const criterion = candidate as Readonly<Record<string, unknown>>;
+    const id = criterion["id"];
+    if (typeof id === "string") {
+      const prior = seen.get(id);
+      if (prior !== undefined) {
+        const yamlPath = `$.criteria[${index}].id`;
+        diagnostics.push(failure(
+          "rubric",
+          filePath,
+          "rubric-criteria-id-duplicate",
+          `task_invalid: rubric criterion id ${JSON.stringify(id)} duplicates criteria[${prior}]`,
+          "Give every rubric criterion a unique id.",
+          positionForYamlPath(parsed.document, parsed.lineCounter, yamlPath)
+        ));
+      } else {
+        seen.set(id, index);
+      }
+    }
+    if (typeof criterion["weight"] === "number" && Number.isFinite(criterion["weight"])) {
+      weights.push(criterion["weight"]);
+    }
+  }
+  if (weights.length === criteria.length) {
+    const total = weights.reduce((sum, weight) => sum + weight, 0);
+    if (Math.abs(total - 1) > 1e-9) {
+      const yamlPath = "$.criteria";
+      diagnostics.push(failure(
+        "rubric",
+        filePath,
+        "rubric-weight-sum",
+        `task_invalid: rubric criterion weights sum to ${total}, not 1 within 1e-9`,
+        "Adjust the positive criterion weights so they sum to exactly 1.",
+        positionForYamlPath(parsed.document, parsed.lineCounter, yamlPath)
+      ));
+    }
+  }
+  return diagnostics;
+}
+
+function inspectAndValidate(
+  bytes: Uint8Array,
+  filePath: string,
+  kind: YamlKind
+): YamlInspection<Readonly<Record<string, unknown>>> {
+  let parsed: ReturnType<typeof parsePlainDocument>;
+  try {
+    parsed = parsePlainDocument(bytes, filePath, kind);
+  } catch (cause) {
+    if (cause instanceof TaskFormatError) {
+      return {
+        source: undefined,
+        document: undefined,
+        loaded: undefined,
+        diagnostics: [cause]
+      };
+    }
+    throw cause;
+  }
+  const validation = schemaValidationFor(parsed.value, kind);
+  const diagnostics: TaskFormatError[] = [];
+  if (!validation.ok) {
+    const versionFailure = validation.code.endsWith("/format-version-unsupported");
+    if (versionFailure) {
+      diagnostics.push(failure(
+        kind,
+        filePath,
+        "format-version-unsupported",
+        `${categoryFor(kind)}: unsupported format_version; supported version is 1.0`,
+        "Set format_version to 1.0 or upgrade Assay to a version that supports the file.",
+        positionForSchemaError(parsed.document, parsed.lineCounter, undefined, ["format_version"])
+      ));
+    } else {
+      for (const schemaError of validation.errors) {
+        const rule = `${schemaError.keyword}${schemaError.message === undefined ? "" : ` ${schemaError.message}`}`;
+        diagnostics.push(failure(
+          kind,
+          filePath,
+          "schema",
+          `${categoryFor(kind)}: document violates published schema rule ${rule}`,
+          "Change the value at the reported YAML path to match the published schema.",
+          positionForSchemaError(parsed.document, parsed.lineCounter, schemaError)
+        ));
+      }
+    }
+  }
+  if (kind === "rubric") diagnostics.push(...rubricRuleDiagnostics(parsed, filePath));
+  const loaded = diagnostics.length === 0
+    ? { path: filePath, source: parsed.source, document: parsed.value }
+    : undefined;
+  return {
+    source: parsed.source,
+    document: parsed.value,
+    loaded,
+    diagnostics
+  };
+}
+
 function parseAndValidate(
   bytes: Uint8Array,
   filePath: string,
   kind: YamlKind
 ): LoadedYaml<Readonly<Record<string, unknown>>> {
-  const parsed = parsePlainDocument(bytes, filePath, kind);
-  const validation: SchemaValidationResult = kind === "task"
-    ? validateTaskDocument(parsed.value)
-    : kind === "suite"
-      ? validateSuiteDocument(parsed.value)
-      : validateMatrixDocument(parsed.value);
+  const inspected = inspectAndValidate(bytes, filePath, kind);
+  if (inspected.loaded !== undefined) return inspected.loaded;
+  throw inspected.diagnostics[0] ?? failure(
+    kind,
+    filePath,
+    "schema",
+    `${categoryFor(kind)}: document could not be validated`,
+    "Correct the document to match the published schema."
+  );
+}
 
-  if (!validation.ok) {
-    const position = positionForSchemaFailure(
-      parsed.document,
-      parsed.lineCounter,
-      validation
-    );
-    const versionFailure = validation.code.endsWith("/format-version-unsupported");
-    throw failure(
-      kind,
-      filePath,
-      versionFailure ? "format-version-unsupported" : "schema",
-      versionFailure
-        ? `${categoryFor(kind)}: unsupported format_version; supported version is 1.0`
-        : `${categoryFor(kind)}: document does not match the published schema`,
-      versionFailure
-        ? "Set format_version to 1.0 or upgrade Assay to a version that supports the file."
-        : "Change the value at the reported YAML path to match the published schema.",
-      position
-    );
-  }
-
-  return { path: filePath, source: parsed.source, document: parsed.value };
+export function inspectYamlBytes(
+  bytes: Uint8Array,
+  filePath: string,
+  kind: YamlKind
+): YamlInspection<Readonly<Record<string, unknown>>> {
+  return inspectAndValidate(bytes, filePath, kind);
 }
 
 export function parseTaskBytes(
@@ -306,6 +478,13 @@ export function parseMatrixBytes(
   return parseAndValidate(bytes, filePath, "matrix") as LoadedYaml<MatrixDocument>;
 }
 
+export function parseRubricBytes(
+  bytes: Uint8Array,
+  filePath: string
+): LoadedYaml<RubricDocument> {
+  return parseAndValidate(bytes, filePath, "rubric");
+}
+
 export async function loadTask(
   filePath: string,
   io: YamlLoaderIo = DEFAULT_IO
@@ -325,4 +504,11 @@ export async function loadMatrix(
   io: YamlLoaderIo = DEFAULT_IO
 ): Promise<LoadedYaml<MatrixDocument>> {
   return parseMatrixBytes(await io.readFile(filePath), filePath);
+}
+
+export async function loadRubric(
+  filePath: string,
+  io: YamlLoaderIo = DEFAULT_IO
+): Promise<LoadedYaml<RubricDocument>> {
+  return parseRubricBytes(await io.readFile(filePath), filePath);
 }

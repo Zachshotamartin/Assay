@@ -3,7 +3,6 @@ import { createReadStream } from "node:fs";
 import {
   lstat,
   readFile,
-  readdir,
   realpath,
   stat
 } from "node:fs/promises";
@@ -25,30 +24,16 @@ import {
   type ConfigFileInput,
   type ResolvedConfig
 } from "@assay/config";
+import { AssayError } from "@assay/contracts";
 import {
-  AssayError,
-  exitCodeForCategory,
-  type AssayErrorCategory
-} from "@assay/contracts";
-import {
-  expandMatrix,
-  loadMatrix,
   loadSuite,
-  loadTask,
   resolveSuite,
-  resolveTaskInheritance,
-  taskContentHash,
   type HashedResolvedTask,
-  type LoadedYaml,
-  type ResolvedSuite,
-  type ResolvedTask,
-  type SuiteDocument,
-  type TaskDocument
+  type ResolvedSuite
 } from "@assay/task-format";
 
 import type { CliRuntime } from "./runtime.js";
 
-const DISCOVERY_EXCLUSIONS = new Set([".assay", ".git", "node_modules"]);
 const UTF8 = new TextDecoder("utf-8", { fatal: true });
 
 export type PreparedAssertion = DeterministicAssertionSpec | CheckerAssertionSpec;
@@ -81,12 +66,6 @@ export interface PreparedTask {
 export interface PreparedSuite {
   readonly source: ResolvedSuite;
   readonly tasks: readonly PreparedTask[];
-}
-
-export interface ValidationSummary {
-  readonly suites: number;
-  readonly tasks: number;
-  readonly checkers: number;
 }
 
 export interface LoadedConfigInput {
@@ -201,7 +180,7 @@ function stringArray(value: unknown): readonly string[] {
   return Array.isArray(value) && value.every((entry) => typeof entry === "string") ? value : [];
 }
 
-async function resolveFixture(
+export async function resolveFixture(
   projectRoot: string,
   task: HashedResolvedTask
 ): Promise<PreparedFixture> {
@@ -245,7 +224,7 @@ async function resolveFixture(
   return { kind: "archive", path, sha256: actual, gitInit };
 }
 
-async function resolvePrompt(projectRoot: string, task: HashedResolvedTask): Promise<string> {
+export async function resolvePrompt(projectRoot: string, task: HashedResolvedTask): Promise<string> {
   const prompt = task.document["prompt"];
   if (typeof prompt === "string") return prompt;
   const file = asRecord(prompt)["file"];
@@ -270,7 +249,7 @@ async function resolvePrompt(projectRoot: string, task: HashedResolvedTask): Pro
   return decoded;
 }
 
-async function normalizeAssertion(
+export async function normalizeAssertion(
   projectRoot: string,
   origin: string,
   assertion: unknown
@@ -407,176 +386,6 @@ export function resolveRuntimeConfig(
     file: input.file,
     context
   });
-}
-
-async function walkValidationFiles(root: string): Promise<readonly string[]> {
-  const paths: string[] = [];
-  const visit = async (directory: string): Promise<void> => {
-    const entries = await readdir(directory, { withFileTypes: true });
-    entries.sort((left, right) => left.name < right.name ? -1 : left.name > right.name ? 1 : 0);
-    for (const entry of entries) {
-      if (entry.isDirectory() && DISCOVERY_EXCLUSIONS.has(entry.name)) continue;
-      const path = resolve(directory, entry.name);
-      if (entry.isDirectory()) {
-        await visit(path);
-      } else if (
-        entry.isFile() &&
-        (entry.name.endsWith(".task.yaml") ||
-          entry.name.endsWith(".suite.yaml") ||
-          entry.name.endsWith(".matrix.yaml"))
-      ) {
-        paths.push(path);
-      }
-    }
-  };
-  await visit(root);
-  return paths;
-}
-
-async function validationInputs(projectRoot: string, inputs: readonly string[]): Promise<readonly string[]> {
-  const requested = inputs.length === 0 ? [projectRoot] : inputs;
-  const paths = new Set<string>();
-  for (const input of requested) {
-    if (input.includes("*")) {
-      throw new AssayError(
-        "invalid_invocation",
-        `invalid_invocation: validate glob expansion is not available through a directory argument: ${input}; nothing ran; pass the containing directory`
-      );
-    }
-    const path = await canonicalInputPath(projectRoot, input);
-    const metadata = await stat(path);
-    if (metadata.isDirectory()) {
-      for (const child of await walkValidationFiles(path)) paths.add(child);
-    } else if (metadata.isFile()) {
-      paths.add(path);
-    } else {
-      return invalidPath("invalid_invocation", `validation input is not a regular file or directory: ${input}`);
-    }
-  }
-  return [...paths].sort();
-}
-
-function hashed(task: ResolvedTask): HashedResolvedTask {
-  return { ...task, contentHash: taskContentHash(task.document) };
-}
-
-export async function validateProjectInputs(
-  runtime: CliRuntime,
-  inputs: readonly string[]
-): Promise<ValidationSummary> {
-  const projectRoot = await canonicalProjectRoot(runtime.projectRoot);
-  const paths = await validationInputs(projectRoot, inputs);
-  if (paths.length === 0) {
-    throw new AssayError(
-      "invalid_invocation",
-      "invalid_invocation: validation discovered no task, suite, or matrix files; nothing ran; pass a populated project path"
-    );
-  }
-
-  const findings: Array<{
-    readonly category: AssayErrorCategory;
-    readonly filePath: string;
-    readonly yamlPath: string;
-    readonly code: string;
-    readonly message: string;
-  }> = [];
-  const recordFinding = (error: unknown, fallbackPath: string): void => {
-    const classified = error instanceof AssayError
-      ? error
-      : new AssayError("internal_invariant", "internal_invariant: validation subsystem threw an unclassified error");
-    const detailed = classified as AssayError & {
-      readonly filePath?: string;
-      readonly yamlPath?: string;
-      readonly code?: string;
-    };
-    const sourcePath = detailed.filePath ?? fallbackPath;
-    const absoluteSource = resolve(sourcePath);
-    const displayPath = contained(projectRoot, absoluteSource)
-      ? projectRelative(projectRoot, absoluteSource)
-      : sourcePath;
-    findings.push({
-      category: classified.category,
-      filePath: displayPath,
-      yamlPath: detailed.yamlPath ?? "$",
-      code: detailed.code ?? classified.category,
-      message: classified.message
-    });
-  };
-
-  const suites = new Map<string, ResolvedSuite>();
-  const tasks = new Map<string, HashedResolvedTask>();
-  for (const path of paths) {
-    try {
-      if (path.endsWith(".suite.yaml")) {
-        const suite = await resolveSuite(await loadSuite(path), { projectRoot });
-        validateSuiteRelations(suite);
-        suites.set(path, suite);
-        for (const task of suite.tasks) tasks.set(task.path + String(task.document["id"]), task);
-        continue;
-      }
-      if (path.endsWith(".task.yaml")) {
-        const task = await resolveTaskInheritance(await loadTask(path), { projectRoot });
-        if (task.document["abstract"] !== true) tasks.set(task.path + String(task.document["id"]), hashed(task));
-        continue;
-      }
-      if (path.endsWith(".matrix.yaml")) {
-        const matrix = await loadMatrix(path);
-        const basePath = await canonicalInputPath(projectRoot, resolve(dirname(path), matrix.document.task), "task_invalid");
-        const base = await resolveTaskInheritance(await loadTask(basePath), { projectRoot });
-        for (const task of expandMatrix(matrix, base)) {
-          const prepared = hashed(task);
-          tasks.set(prepared.path + String(prepared.document["id"]), prepared);
-        }
-        continue;
-      }
-      invalidPath("invalid_invocation", `unknown validation file kind: ${path}`);
-    } catch (error) {
-      recordFinding(error, path);
-    }
-  }
-
-  let checkerCount = 0;
-  for (const task of [...tasks.values()].sort((left, right) => {
-    const leftKey = `${left.path}\0${String(left.document["id"])}`;
-    const rightKey = `${right.path}\0${String(right.document["id"])}`;
-    return leftKey < rightKey ? -1 : leftKey > rightKey ? 1 : 0;
-  })) {
-    try {
-      const prepared = await prepareTask(projectRoot, task);
-      checkerCount += prepared.assertions.filter((assertion) => assertion.type === "checker").length;
-    } catch (error) {
-      recordFinding(error, task.path);
-    }
-  }
-
-  if (findings.length > 0) {
-    const unique = new Map<string, (typeof findings)[number]>();
-    for (const finding of findings) {
-      unique.set(
-        `${finding.filePath}\0${finding.yamlPath}\0${finding.code}\0${finding.message}`,
-        finding
-      );
-    }
-    const ordered = [...unique.values()].sort((left, right) => {
-      const leftKey = `${left.filePath}\0${left.yamlPath}\0${left.code}`;
-      const rightKey = `${right.filePath}\0${right.yamlPath}\0${right.code}`;
-      return leftKey < rightKey ? -1 : leftKey > rightKey ? 1 : 0;
-    });
-    const firstCategory = ordered[0]!.category;
-    const category: AssayErrorCategory = exitCodeForCategory(firstCategory) === 4
-      ? firstCategory
-      : ordered[0]!.filePath.endsWith(".suite.yaml")
-        ? "suite_invalid"
-        : "task_invalid";
-    throw new AssayError(
-      category,
-      `${category}: validation found ${ordered.length} diagnostic${ordered.length === 1 ? "" : "s"}; nothing ran:\n` +
-      ordered.map((finding) =>
-        `${finding.filePath} ${finding.yamlPath} ${finding.code}: ${finding.message}`).join("\n")
-    );
-  }
-
-  return { suites: suites.size, tasks: tasks.size, checkers: checkerCount };
 }
 
 export function variantDefinition(

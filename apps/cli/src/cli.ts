@@ -167,17 +167,29 @@ export async function executeCli(
     const {
       loadConfigInput,
       loadPreparedSuite,
-      resolveRuntimeConfig,
-      validateProjectInputs
+      resolveRuntimeConfig
     } = await import("./project.js");
     const configInput = await loadConfigInput(runtime.projectRoot);
     resolveRuntimeConfig(runtime, configInput);
     if (invocation.command === "validate") {
-      const summary = await validateProjectInputs(runtime, invocation.paths);
+      const validation = await import("./validation.js");
+      let summary: Awaited<ReturnType<typeof validation.validateProjectInputs>>;
+      try {
+        summary = await validation.validateProjectInputs(runtime, invocation.paths);
+      } catch (error) {
+        if (error instanceof validation.ValidationDiagnosticsError) {
+          const rendered = validation.renderValidationDiagnostics(error);
+          io.stderr(`assay: ${rendered}\n`);
+          return exitCodeForCategory(error.category);
+        }
+        throw error;
+      }
       io.stdout(
         `Validated ${summary.suites} ${summary.suites === 1 ? "suite" : "suites"}, ` +
-        `${summary.tasks} ${summary.tasks === 1 ? "task" : "tasks"}, and ` +
-        `${summary.checkers} ${summary.checkers === 1 ? "checker" : "checkers"}.\n`
+        `${summary.tasks} ${summary.tasks === 1 ? "task" : "tasks"}, ` +
+        `${summary.matrices} ${summary.matrices === 1 ? "matrix" : "matrices"}, ` +
+        `${summary.checkers} ${summary.checkers === 1 ? "checker" : "checkers"}, and ` +
+        `${summary.rubrics} ${summary.rubrics === 1 ? "rubric" : "rubrics"}.\n`
       );
       return 0;
     }

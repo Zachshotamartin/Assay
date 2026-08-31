@@ -256,7 +256,7 @@ assertions:
         { type: "checker", module: "missing.checker.ts" }
       ],
       {
-        fixture: { path: `missing-fixture-${PLANTED_OPENAI_KEY}` },
+        fixture: { path: `missing-fixture.${PLANTED_OPENAI_KEY}` },
         prompt: { file: "missing.prompt.md" }
       }
     ));
@@ -312,13 +312,17 @@ unexpected: true
 
     const renderedLines = diagnostics.split("\n").filter((line) => /^[^ ]+\.\w+/u.test(line));
     expect(renderedLines).toEqual([...renderedLines].sort((left, right) => {
-      const leftKey = left.slice(0, left.indexOf(" task_invalid/") >= 0
-        ? left.indexOf(" task_invalid/")
-        : left.indexOf(" checker_invalid/"));
-      const rightKey = right.slice(0, right.indexOf(" task_invalid/") >= 0
-        ? right.indexOf(" task_invalid/")
-        : right.indexOf(" checker_invalid/"));
-      return leftKey < rightKey ? -1 : leftKey > rightKey ? 1 : 0;
+      const parts = (line: string): readonly [string, string] => {
+        const match = /^(.+?):[0-9]+:[0-9]+ (\S+)/u.exec(line);
+        expect(match).not.toBeNull();
+        return [match![1]!, match![2]!];
+      };
+      const [leftFile, leftYamlPath] = parts(left);
+      const [rightFile, rightYamlPath] = parts(right);
+      return Buffer.compare(
+        Buffer.from(`${leftFile}\0${leftYamlPath}`),
+        Buffer.from(`${rightFile}\0${rightYamlPath}`)
+      );
     }));
     await expect(stat(join(root, ".assay"))).rejects.toMatchObject({ code: "ENOENT" });
   }, 30_000);

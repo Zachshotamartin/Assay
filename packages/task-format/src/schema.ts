@@ -1,6 +1,7 @@
 import { Ajv2020, type ErrorObject, type ValidateFunction } from "ajv/dist/2020.js";
 
 import matrixSchema from "./schemas/matrix.v1.schema.json" with { type: "json" };
+import rubricSchema from "./schemas/rubric.v1.schema.json" with { type: "json" };
 import suiteSchema from "./schemas/suite.v1.schema.json" with { type: "json" };
 import taskSchema from "./schemas/task.v1.schema.json" with { type: "json" };
 
@@ -29,6 +30,7 @@ const ajv = new Ajv2020({
 const taskValidator = ajv.compile(taskSchema) as ValidateFunction<unknown>;
 const suiteValidator = ajv.compile(suiteSchema) as ValidateFunction<unknown>;
 const matrixValidator = ajv.compile(matrixSchema) as ValidateFunction<unknown>;
+const rubricValidator = ajv.compile(rubricSchema) as ValidateFunction<unknown>;
 
 function declaredVersion(value: unknown): string | undefined {
   if (typeof value !== "object" || value === null || Array.isArray(value)) {
@@ -74,4 +76,8 @@ export function validateSuiteDocument(value: unknown): SchemaValidationResult {
 
 export function validateMatrixDocument(value: unknown): SchemaValidationResult {
   return validate(value, matrixValidator, "task_invalid");
+}
+
+export function validateRubricDocument(value: unknown): SchemaValidationResult {
+  return validate(value, rubricValidator, "task_invalid");
 }
