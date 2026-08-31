@@ -175,6 +175,12 @@ jobs:
         run: npm ci --ignore-scripts
       - name: Build packaged CLI
         run: npm run build
+      - name: Verify governed fixture manifests
+        run: npm run check:fixtures
+      - name: Validate the R1 reference corpus
+        run: node apps/cli/dist/bin.js validate fixtures/suites/reference
+      - name: Run the R1 simulated reference suite
+        run: node apps/cli/dist/bin.js run fixtures/suites/reference.suite.yaml --variant baseline --adapter simulated -n 10 --seed 42
       - name: Run simulated end-to-end tests
         run: npm run test:e2e:simulated
       - name: Compare canonical reference-run bytes

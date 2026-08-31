@@ -1,0 +1,56 @@
+{
+  "fixtureSchema": "assay-fixture-directory/1",
+  "generatorVersion": "r1-fixtures/1",
+  "fixtureId": "r1-reference-suite",
+  "fixtureKind": "suite",
+  "manifestRoot": "fixtures/suites",
+  "contentHash": "sha256:1c690f952c41336ce305894c5dbaedfe3e509ae569ed46c8dfcd1123a72af310",
+  "manifest": [
+    {
+      "path": "reference.suite.yaml",
+      "sha256": "4329fbd4ce32a494a810c5ac2782bcb8adfc6a9364a83b143692d8eed308ba4a"
+    },
+    {
+      "path": "reference/basic.task.yaml",
+      "sha256": "291a52fe47aea75c5636e0cd8b626044cd3a5814207e4dcf10a9c861cdc6ccf0"
+    },
+    {
+      "path": "reference/core.suite.yaml",
+      "sha256": "284ccbbf457686d1141bc9b66686d7bde5d457310242a629655c15c318a31cef"
+    },
+    {
+      "path": "reference/repo/README.md",
+      "sha256": "ae6c126b3c39cfeb3078bcd362c7df904f358f377a10709db3a5bda02d1c737d"
+    }
+  ],
+  "suites": [
+    "fixtures/suites/reference.suite.yaml"
+  ],
+  "consumers": [
+    ".github/workflows/ci.yml",
+    "scripts/r1-reproducibility.ts"
+  ],
+  "assurances": {
+    "synthetic": true,
+    "containsRealCredentials": false,
+    "containsRealUserRepositories": false,
+    "containsPrivateTranscripts": false,
+    "registeredSyntheticCanaries": []
+  },
+  "provenance": {
+    "origin": "repository-authored-synthetic",
+    "source": "Assay R1 planning and test corpus",
+    "license": "MIT",
+    "capturedFromExternalSystem": false
+  },
+  "regeneration": {
+    "mode": "hand-authored",
+    "command": "npm run fixtures:manifest -- fixtures/suites/reference",
+    "verificationCommand": "npm run check:fixtures",
+    "instructions": [
+      "Edit only synthetic fixture source files and preserve the documented schema.",
+      "Refresh this manifest with npm run fixtures:manifest -- fixtures/suites/reference.",
+      "Review every content and provenance change, then run npm run check:fixtures."
+    ]
+  }
+}
