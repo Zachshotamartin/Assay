@@ -2,7 +2,10 @@ import type { AssayConfig, AssayConfigLeafPath } from "./types.js";
 
 export const MAX_CONFIG_FILE_BYTES = 1_048_576;
 export const MAX_CONFIG_DEPTH = 32;
-export const MAX_CONFIG_ITEMS = 10_000;
+// A valid v1 config has only 17 leaves. Keeping the hostile-input ceiling
+// close to that fixed schema makes the pre-schema walk deterministic even
+// when the full test workspace is contending for CPU.
+export const MAX_CONFIG_ITEMS = 1_000;
 export const MAX_CONFIG_STRING_LENGTH = 4_096;
 
 export const ASSAY_CONFIG_ENV = Object.freeze({
