@@ -1224,7 +1224,9 @@ before returning bytes. Concurrent writers rely on WAL plus bounded-retry
     Definition of done: `assay validate` validates tasks, suites, and
     checkers without running anything (FR-TASK-010); `assay run
     <suite> --variant <name> -n N --seed S` produces the full flow; each
-    exit code is asserted by a subprocess test (FR-RUN-001, FR-RUN-010).
+    R1-reachable exit codes 0, 1, 4, 5, and 6 are asserted by subprocess
+    tests, while the full seven-value mapping is frozen in the shared
+    contract (FR-RUN-001, FR-RUN-010, ADR-0015).
 14. **R1.14 — Byte-reproducibility gate and golden regeneration.** Add
     the e2e suite that runs one suite twice with fixed seed and clock and
     compares exported bytes, plus the explicit
@@ -1253,7 +1255,7 @@ before returning bytes. Concurrent writers rely on WAL plus bounded-retry
 | store corruption quarantine | A flipped byte in a record or blob is silently served. | Hash verification fails, the record is quarantined and surfaced (FR-TRACE-009). |
 | append-only reruns | A rerun mutates or overwrites an earlier run's rows. | Reruns produce new run ids; prior records are byte-identical after the rerun (FR-RUN-009). |
 | byte reproducibility | Two identical simulated runs differ by one byte. | Full exported record bytes are identical across two runs and across macOS/Linux CI (FR-RUN-004, NFR-DET-004). |
-| exit-code subprocess suite | Any documented exit code is wrong or unreachable. | Subprocess tests assert 0, 1, 4, 5, and 6 from `assay run`/`assay validate` scenarios (FR-RUN-010). |
+| exit-code subprocess suite | Any R1-reachable exit code is wrong or the full mapping drifts. | Subprocess tests assert the R1-reachable outcomes 0, 1, 4, 5, and 6 from `assay run`/`assay validate` scenarios; contract tests pin all seven values (FR-RUN-010, ADR-0015). |
 | zero-provider CI probe | A required check opens a network connection to a provider. | Network sentinels in required suites observe zero provider egress (NFR-DET-001, NFR-COST-001). |
 
 ### 6.7 Failure and security cases
@@ -1300,7 +1302,9 @@ R1 is accepted only when:
   Linux CI (FR-RUN-004, NFR-DET-004);
 - the pathological-adapter, state-machine, checker-limit, store-crash,
   and quarantine suites are green;
-- every documented exit code is produced by a subprocess test;
+- Subprocess tests assert the R1-reachable outcomes 0, 1, 4, 5, and 6,
+  and contract tests pin all seven numeric mappings (FR-RUN-010,
+  ADR-0015);
 - required CI provably makes zero provider egress;
 - the docs check enforces the updated truthful claims.
 
@@ -1310,7 +1314,8 @@ R1 defers sandboxing and all isolation claims (R2), bounded parallelism
 and full cancellation/timeout enforcement (R2), real providers, BYOK, and
 usage reconciliation (R3), trajectory metrics and trajectory assertions
 (R4 — R1 persists raw redacted adapter events but computes no metric),
-budget evaluation (R5), all comparison statistics (R6), judge assertions
+budget evaluation and runtime production of exit code 2 (R5), all comparison
+statistics and runtime production of exit code 3 (R6), judge assertions
 (R7 — rejected at load), the Action (R8), the viewer (R9), and packaging
 (R10). The Robin adapter is deferred to R4; R1's only adapter is
 simulated.
@@ -1330,7 +1335,10 @@ FR-ASSERT-008 and FR-ASSERT-010 (sandboxed forms in R2), FR-TASK-008 and
 FR-TASK-009 (fixture/network declarations parse but their enforcement is
 R2), FR-ADAPT-008 (usage fields exist in frames; reconciliation is R3),
 and FR-TRAJ-005/FR-TRAJ-009 groundwork via raw event retention and
-truncation markers (owned by R4).
+truncation markers (owned by R4). Per ADR-0015, R1 terminally owns the stable
+seven-value FR-RUN-010 contract and proves its five currently reachable
+outcomes; R5 and R6 add genuine runtime reachability for codes 2 and 3
+without re-owning or renumbering that contract.
 
 ## 7. R2 — Sandboxed Execution
 
@@ -4480,7 +4488,7 @@ commit, or the docs consistency check fails.
 | `FR-RUN-007` | R1 | Run record golden binds suite/task hashes, variant, adapter, model, seeds, version. |
 | `FR-RUN-008` | R2 | Per-task and per-suite monotonic-clock timeout fixtures produce `timed_out`. |
 | `FR-RUN-009` | R1 | Rerun appends; prior run records byte-unchanged under hash comparison. |
-| `FR-RUN-010` | R1 | Subprocess tests pin all seven exit codes to their categories. |
+| `FR-RUN-010` | R1 | Contract tests pin all seven values and category mappings; subprocess tests prove R1-reachable 0/1/4/5/6, with real exit 2 and 3 reachability added by R5 and R6 per ADR-0015. |
 | `FR-RUN-011` | R2 | kill -9 during a run; next start recovers the store and reaps labeled sandboxes. |
 | `FR-RUN-012` | R5 | `--dry-run` prints tasks, variants, n, and spend ceiling with zero side effects. |
 
@@ -4742,7 +4750,7 @@ listed requirement's terminal owner in §16.
 | Task inheritance (`extends`) and matrix parameterization | R1 | FR-TASK-004, FR-TASK-005 |
 | Fixture references and task network/credential declarations | R2 | FR-TASK-008, FR-TASK-009 |
 | Task-format migration command and old-version fixtures | R10 | FR-TASK-011 |
-| Runner, run state machine, repeatability, exit codes, append-only records | R1 | FR-RUN-001–004, FR-RUN-007, FR-RUN-009, FR-RUN-010 |
+| Runner, run state machine, repeatability, stable seven-value exit-code contract, append-only records | R1 | FR-RUN-001–004, FR-RUN-007, FR-RUN-009, FR-RUN-010; R5/R6 add subsystem reachability per ADR-0015 |
 | Runner concurrency, cancellation, timeouts, crash recovery | R2 | FR-RUN-005, FR-RUN-006, FR-RUN-008, FR-RUN-011 |
 | Dry-run planning and the published cost model | R5 | FR-RUN-012, NFR-COST-003 |
 | Deterministic assertion layer incl. diff matching | R1 | FR-ASSERT-001, FR-ASSERT-002, FR-ASSERT-005, FR-ASSERT-009 |

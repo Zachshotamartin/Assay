@@ -717,7 +717,9 @@ terminally proves it.
 - `FR-RUN-010`: Exit codes distinguish success, task failures, budget
   breach, comparison regression, invalid input or configuration,
   infrastructure error, and cancellation exactly as specified in
-  section 5.1.
+  section 5.1. ADR-0015 assigns R1 the stable seven-value contract and
+  stages runtime reachability for budget breach at R5 and comparison
+  regression at R6, where those subsystems are implemented.
 - `FR-RUN-011`: A crashed harness process leaves the store recoverable and
   sandboxes reapable on next start; recovery requires no manual database
   surgery.
@@ -1271,7 +1273,8 @@ product behavior may be claimed.
 
 When accepted: a suite runs against the simulated agent and produces a
 byte-reproducible result. Claimable: task authoring, validation, the runner
-state machine, deterministic and checker assertions, exit codes, append-only
+state machine, deterministic and checker assertions, the stable seven-value
+exit-code contract and R1-reachable outcomes 0/1/4/5/6, append-only
 persistence in the store core, and deterministic zero-dollar CI. Not
 claimable: sandboxing, real providers, trajectory metrics, budgets,
 statistics, judging, CI integration, or the viewer.

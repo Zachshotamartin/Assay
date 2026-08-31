@@ -168,7 +168,13 @@ describe("documentation consistency checker", () => {
 
   it("stages deferred exit-code reachability at the subsystem-owning gates [FR-RUN-010]", async () => {
     const [decision, buildPlan, operationsPlan] = await Promise.all([
-      readFile(join(repositoryRoot, "docs/decisions/ADR-0015.md"), "utf8"),
+      readFile(
+        join(
+          repositoryRoot,
+          "docs/decisions/ADR-0015-stage-exit-code-reachability.md"
+        ),
+        "utf8"
+      ),
       readFile(join(repositoryRoot, "docs/BUILD_PLAN.md"), "utf8"),
       readFile(join(repositoryRoot, "docs/OPERATIONS_TEST_PLAN.md"), "utf8")
     ]);
