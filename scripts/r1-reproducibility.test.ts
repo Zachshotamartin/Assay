@@ -57,10 +57,31 @@ describe("R1.14 byte reproducibility", () => {
     expect(exported).toMatchObject({
       exportVersion: 1,
       run: {
-        seed: 42,
+        rootSeed: 42,
         runsPerTask: 10,
         status: "completed",
-        adapterId: "adapter-simulated"
+        adapterId: "adapter-simulated",
+        adapterVersion: "1.0.0",
+        contractVersion: "assay-adapter/1",
+        isolationLabel: "unsafe_host",
+        providerReportedModel: {
+          family: "synthetic",
+          model: "scripted-v1",
+          provider: "synthetic"
+        },
+        tasks: [
+          {
+            repetitions: 10,
+            rootSeed: 42,
+            seedStrategy: "derived",
+            taskId: "reference-task"
+          }
+        ],
+        variant: {
+          adapter: "simulated",
+          model: "synthetic/scripted-v1",
+          name: "baseline"
+        }
       }
     });
     expect(exported["taskRuns"]).toHaveLength(10);
