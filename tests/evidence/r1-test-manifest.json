@@ -91,6 +91,11 @@
       "file": "scripts/ci-workflow.test.ts",
       "title": "builds packaged artifacts once before e2e and never races a nested clean build [NFR-MAINT-006]",
       "requirementId": "NFR-MAINT-006"
+    },
+    {
+      "file": "scripts/check-docs.test.ts",
+      "title": "stages deferred exit-code reachability at the subsystem-owning gates [FR-RUN-010]",
+      "requirementId": "FR-RUN-010"
     }
   ]
 }

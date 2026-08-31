@@ -165,4 +165,29 @@ describe("documentation consistency checker", () => {
       })
     ]);
   });
+
+  it("stages deferred exit-code reachability at the subsystem-owning gates [FR-RUN-010]", async () => {
+    const [decision, buildPlan, operationsPlan] = await Promise.all([
+      readFile(join(repositoryRoot, "docs/decisions/ADR-0015.md"), "utf8"),
+      readFile(join(repositoryRoot, "docs/BUILD_PLAN.md"), "utf8"),
+      readFile(join(repositoryRoot, "docs/OPERATIONS_TEST_PLAN.md"), "utf8")
+    ]);
+
+    expect(decision).toContain("- Status: accepted");
+    expect(decision).toContain("0, 1, 4, 5, and 6");
+    expect(decision).toContain("exit code 2");
+    expect(decision).toContain("exit code 3");
+    expect(buildPlan).toContain(
+      "Subprocess tests assert the R1-reachable outcomes 0, 1, 4, 5, and 6"
+    );
+    expect(buildPlan).not.toContain(
+      "every documented exit code is produced by a subprocess test"
+    );
+    expect(operationsPlan).toContain(
+      "RUN-007 exit-code contract for the five R1-reachable outcomes"
+    );
+    expect(operationsPlan).not.toContain(
+      "RUN-007 exit-code contract for all seven documented outcomes"
+    );
+  });
 });
