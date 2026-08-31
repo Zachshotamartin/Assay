@@ -131,4 +131,21 @@ describe("bounded safe YAML loading", () => {
     expect(loaded.document["assertions"]).toEqual(expect.any(Array));
     expect(reads).toEqual(["/project/inert.task.yaml"]);
   });
+
+  it("FR-TASK-012 warns when a task id differs from its file basename", () => {
+    const bytes = new TextEncoder().encode(
+      'format_version: "1.0"\nid: canonical-task\nabstract: true\n'
+    );
+
+    expect(parseTaskBytes(bytes, "/project/canonical-task.task.yaml").warnings).toEqual([]);
+    expect(parseTaskBytes(bytes, "/project/renamed-file.task.yaml").warnings).toEqual([
+      {
+        code: "task_warning/id-file-name-mismatch",
+        filePath: "/project/renamed-file.task.yaml",
+        yamlPath: "$.id",
+        message: "task id canonical-task differs from file basename renamed-file",
+        remedy: "Rename the task file to canonical-task.task.yaml or change its id intentionally."
+      }
+    ]);
+  });
 });
