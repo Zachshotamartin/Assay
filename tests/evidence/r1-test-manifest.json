@@ -8,7 +8,6 @@
       "packages/adapter-core/src/frames/line-splitter.test.ts",
       "packages/adapter-core/src/supervisor.test.ts",
       "packages/adapter-simulated/src/scenario.test.ts",
-      "packages/assertions/src/assertion-validation.test.ts",
       "packages/assertions/src/diff-matches.test.ts",
       "packages/config/src/config.test.ts",
       "packages/contracts/src/canonical-json.test.ts",

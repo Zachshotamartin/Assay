@@ -53,6 +53,8 @@ jobs:
         run: npm ci --ignore-scripts
       - name: Check documentation claims and status
         run: npm run lint:docs
+      - name: Check disjoint test evidence lanes
+        run: npm run check:test-evidence
 
   unit-property:
     name: unit-property
@@ -71,7 +73,49 @@ jobs:
       - name: Install from lockfile
         run: npm ci --ignore-scripts
       - name: Run unit and property tests
-        run: npm run test:unit
+        run: npm run test:unit && npm run test:property
+
+  unit-property-macos:
+    name: unit-property-macos
+    runs-on: macos-14
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Set up pinned Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version-file: .node-version
+          cache: npm
+      - name: Install from lockfile
+        run: npm ci --ignore-scripts
+      - name: Run unit and property tests
+        run: npm run test:unit && npm run test:property
+
+  integration:
+    name: integration (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, macos-14]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Set up pinned Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version-file: .node-version
+          cache: npm
+      - name: Install from lockfile
+        run: npm ci --ignore-scripts
+      - name: Run integration tests
+        run: npm run test:integration
 
   arch-boundaries:
     name: arch-boundaries

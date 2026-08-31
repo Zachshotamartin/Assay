@@ -21,7 +21,7 @@ import {
   type NewRunRecord,
   type RunStoreOptions,
   type StoreFaultMarker
-} from "./index.js";
+} from "../../src/index.js";
 
 const roots: string[] = [];
 const runId = createRunId("01890f4e-7b72-7000-8000-000000000201");
@@ -33,7 +33,7 @@ const clock: Clock = {
 };
 const trajectoryBytes = new TextEncoder().encode("crash injection trajectory");
 const trajectoryHash = sha256Blob(trajectoryBytes);
-const childPath = fileURLToPath(new URL("./fixtures/crash-writer.ts", import.meta.url));
+const childPath = fileURLToPath(new URL("../../src/fixtures/crash-writer.ts", import.meta.url));
 
 afterEach(async () => {
   await Promise.all(roots.splice(0).map((root) => rm(root, { recursive: true, force: true })));

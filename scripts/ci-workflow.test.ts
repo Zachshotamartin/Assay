@@ -108,19 +108,17 @@ describe("R1 CI workflow contract", () => {
       .toContain("github.event.head_commit.message");
   });
 
-  it("builds packaged artifacts once before e2e and never races a nested clean build", async () => {
+  it("builds packaged artifacts once before e2e and never races a nested clean build [NFR-MAINT-006]", async () => {
     const packageJson = JSON.parse(
       await readFile(`${repositoryRoot}package.json`, "utf8")
     ) as { readonly scripts?: Readonly<Record<string, string>> };
     const subprocessTest = await readFile(
-      `${repositoryRoot}apps/cli/src/subprocess.e2e.test.ts`,
+      `${repositoryRoot}tests/e2e/subprocess.test.ts`,
       "utf8"
     );
 
     expect(subprocessTest).not.toMatch(/npm["'], \["run", "build"\]/u);
-    expect(packageJson.scripts?.["test:unit"]).toContain(
-      "--exclude apps/cli/src/subprocess.e2e.test.ts"
-    );
+    expect(packageJson.scripts?.["test:unit"]).toContain("--exclude 'tests/e2e/**'");
     expect(packageJson.scripts?.["verify"]).toBe(
       "npm run typecheck && npm run lint && npm run build && npm test"
     );

@@ -147,7 +147,7 @@ describe("documentation consistency checker", () => {
     ]);
   });
 
-  it("rejects a synchronized claim that erases R1's unaccepted status", async () => {
+  it("rejects a synchronized claim that erases R1's unaccepted status [NFR-MAINT-004]", async () => {
     const original =
       "Assay is under implementation. Gate R0 is accepted with repository, toolchain, CI, and GitHub governance evidence. Gate R1 has code and local evidence in progress; gates R2 through R10 remain planned. No evaluation product gate is accepted.";
     const altered =

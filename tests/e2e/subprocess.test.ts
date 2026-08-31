@@ -7,7 +7,7 @@ import { DatabaseSync } from "node:sqlite";
 
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 
-const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
+const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const packagedCli = join(repositoryRoot, "apps", "cli", "dist", "bin.js");
 const roots: string[] = [];
 

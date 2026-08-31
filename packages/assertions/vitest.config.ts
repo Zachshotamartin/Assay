@@ -6,7 +6,7 @@ export default defineConfig({
   resolve: { alias: assayWorkspaceAliases },
   test: {
     name: "assertions",
-    include: ["src/**/*.test.ts"],
+    include: ["src/**/*.test.ts", "test/integration/**/*.test.ts"],
     passWithNoTests: false,
     testTimeout: 15_000
   }

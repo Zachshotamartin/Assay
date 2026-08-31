@@ -14,7 +14,7 @@ import {
   validateCheckerModule,
   type CheckerAssertionSpec,
   type CheckerExecutionContext
-} from "./index.js";
+} from "../../src/index.js";
 
 const temporaryDirectories: string[] = [];
 
@@ -330,7 +330,7 @@ export async function check(ctx: CheckerContext): Promise<CheckerVerdict> {
     await expect(readFile(join(workspace, "value.txt"), "utf8")).resolves.toBe("workspace value");
   });
 
-  it("refuses a real loopback network attempt with zero connections", async () => {
+  it("refuses a real loopback network attempt with zero connections [FR-ASSERT-004]", async () => {
     let connectionCount = 0;
     const sentinel = createServer((socket) => {
       connectionCount += 1;

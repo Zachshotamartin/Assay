@@ -19,7 +19,7 @@ import {
   type CommandExecutionResult,
   type DeadlineScheduler,
   type DeterministicAssertionSpec
-} from "./index.js";
+} from "../../src/index.js";
 
 const temporaryDirectories: string[] = [];
 

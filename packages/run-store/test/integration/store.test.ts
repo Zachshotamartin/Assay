@@ -24,7 +24,7 @@ import {
   type NewRunRecord,
   type NewTaskRunRecord,
   type RunStoreOptions
-} from "./index.js";
+} from "../../src/index.js";
 
 const createdRoots: string[] = [];
 const wallTime = "2026-08-30T12:34:56.789Z";

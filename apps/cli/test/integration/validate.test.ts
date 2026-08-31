@@ -4,7 +4,7 @@ import { join, relative } from "node:path";
 
 import { afterEach, describe, expect, it } from "vitest";
 
-import { executeCli, type CliIo, type CliRuntime } from "./cli.js";
+import { executeCli, type CliIo, type CliRuntime } from "../../src/cli.js";
 
 const roots: string[] = [];
 const PLANTED_OPENAI_KEY = "sk-proj-SYNTHETIC0123456789abcdefghijklmnopqrstuv";
@@ -230,7 +230,7 @@ describe("FR-TASK-010 total side-effect-free validation", () => {
     expect(explicit.stdout.join("")).toMatch(/1 rubric/u);
   }, 30_000);
 
-  it("aggregates deterministic line-column findings across and within documents", async () => {
+  it("aggregates deterministic line-column findings across and within documents [FR-TASK-010]", async () => {
     const root = await projectRoot();
     await mkdir(join(root, "repo"), { recursive: true });
     await writeFile(join(root, "repo", "README.md"), "synthetic\n", "utf8");

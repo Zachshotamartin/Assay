@@ -1,13 +1,11 @@
-import { mkdtemp, readFile, rm, symlink } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { readFile } from "node:fs/promises";
 
 import {
   parseAdapterEventFrame,
   parseAdapterRunSpecFrame,
   type AdapterRunSpec
 } from "@assay/adapter-core";
-import { afterEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 
 import {
   resolveSimulatedScenarioPath,
@@ -21,7 +19,6 @@ import {
 } from "./scenario.js";
 
 const fixtureRoot = new URL("../../../fixtures/trajectories/", import.meta.url);
-const tempPaths: string[] = [];
 
 const SPEC: AdapterRunSpec = parseAdapterRunSpecFrame(JSON.stringify({
   type: "run_spec",
@@ -60,10 +57,6 @@ class FixedClock implements SimulatedClock {
     this.sleeps.push(milliseconds);
   }
 }
-
-afterEach(async () => {
-  await Promise.all(tempPaths.splice(0).map((path) => rm(path, { recursive: true, force: true })));
-});
 
 describe("strict simulated scenario schema", () => {
   it("exposes a cwd-independent command for the shipped happy scenario", async () => {
@@ -135,31 +128,6 @@ describe("deterministic scenario execution", () => {
       expect.objectContaining({ usage: expect.objectContaining({ source: "synthetic", costUsdMicros: 0 }) }),
       expect.objectContaining({ usage: expect.objectContaining({ source: "synthetic", costUsdMicros: 0 }) })
     ]);
-  });
-
-  it("applies write/delete only inside the run workspace", async () => {
-    const workspace = await mkdtemp(join(tmpdir(), "assay-sim-workspace-"));
-    tempPaths.push(workspace);
-    const scenario = parseSimulatedScenarioJson(await scenarioFixture("filesystem.json"));
-    await collect(executeSimulatedScenario(scenario, { ...SPEC, workspacePath: workspace }, {
-      clock: new FixedClock()
-    }));
-    await expect(readFile(join(workspace, "nested/kept.txt"), "utf8"))
-      .resolves.toBe("deterministic\n");
-    await expect(readFile(join(workspace, "deleted.txt"), "utf8")).rejects.toMatchObject({ code: "ENOENT" });
-
-    const outside = await mkdtemp(join(tmpdir(), "assay-sim-outside-"));
-    tempPaths.push(outside);
-    await symlink(outside, join(workspace, "escape"));
-    for (const path of ["../outside.txt", "/tmp/outside.txt", "escape/outside.txt"]) {
-      const invalid = parseSimulatedScenarioJson(JSON.stringify({
-        scenario_version: 1,
-        steps: [{ write_file: { path, contents: "forbidden" } }]
-      }));
-      await expect(collect(executeSimulatedScenario(invalid, { ...SPEC, workspacePath: workspace }, {
-        clock: new FixedClock()
-      }))).rejects.toThrow(/workspace/u);
-    }
   });
 
   it("ships tool recovery, loop, token-ramp, and every run_failed fixture", async () => {

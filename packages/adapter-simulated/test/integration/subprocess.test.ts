@@ -13,9 +13,9 @@ import {
 } from "@assay/adapter-core";
 import { afterEach, describe, expect, it } from "vitest";
 
-import { simulatedAdapterCommand } from "./command.js";
+import { simulatedAdapterCommand } from "../../src/command.js";
 
-const fixtureRoot = new URL("../../../fixtures/trajectories/", import.meta.url);
+const fixtureRoot = new URL("../../../../fixtures/trajectories/", import.meta.url);
 const tempPaths: string[] = [];
 
 const REDACTOR: AdapterCaptureRedactor = {

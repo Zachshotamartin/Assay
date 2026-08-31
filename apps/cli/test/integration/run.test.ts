@@ -17,7 +17,7 @@ import {
 } from "@assay/contracts";
 import { afterEach, describe, expect, it } from "vitest";
 
-import { executeCli, type CliIo, type CliRuntime } from "./cli.js";
+import { executeCli, type CliIo, type CliRuntime } from "../../src/cli.js";
 
 const roots: string[] = [];
 
@@ -607,12 +607,12 @@ describe("R1.13 validate and run integration", () => {
       ]);
   });
 
-  it("keeps a clean run_failed terminal assertion-owned and exposes adapter exit zero", async () => {
+  it("keeps a clean run_failed terminal assertion-owned and exposes adapter exit zero [FR-RUN-003]", async () => {
     const root = await projectRoot();
     await writeProject(root, { assertion: { type: "exit_code", equals: 0 } });
     const capture = output();
     const scenarioPath = fileURLToPath(new URL(
-      "../../../fixtures/trajectories/run-failed-agent-gave-up.json",
+      "../../../../fixtures/trajectories/run-failed-agent-gave-up.json",
       import.meta.url
     ));
 
