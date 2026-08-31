@@ -4,7 +4,7 @@
   "fixtureId": "r1-repository-test-corpus",
   "fixtureKind": "repository",
   "manifestRoot": "fixtures/repos",
-  "contentHash": "sha256:9bd05246cf8ebd40eea35c995ad33f3ee4c9ed9f154541e58e20d2bdb1c4ea73",
+  "contentHash": "sha256:51d9ef7947ffaef57b1200948132498bf6589a3e10b565db94f49f72ee0c1a89",
   "manifest": [
     {
       "path": "architecture-checker-worker-import/architecture.config.json",
@@ -108,15 +108,15 @@
     },
     {
       "path": "docs-r1-valid/README.md",
-      "sha256": "47f5022aae82ef39e72b1b3bfa4ff3e49fb6e30ad1925343241863cbf943660a"
+      "sha256": "d07bf9887fa24cd75829876962f9204926914ec7e1040ecea8a643972e4a8081"
     },
     {
       "path": "docs-r1-valid/docs/BUILD_PLAN.md",
-      "sha256": "1b30abae68c1ebe64a836084b34fb6867b9f37a0b19291aa275f01fb30cad93e"
+      "sha256": "e753bd7b28911e8b01d34af44a523d8153ec2e32630ed7d03717464f89d45be2"
     },
     {
       "path": "docs-r1-valid/docs/status.yaml",
-      "sha256": "6f4f264a4e57f4bde73abe348e7ed2ff157d4d81b099e5a44bee50c7968b01ab"
+      "sha256": "2519e83f0308af19d52afa1c9fc9469a7adc3a0962a679a11deda5dc18a98faa"
     },
     {
       "path": "docs-status-drift/README.md",

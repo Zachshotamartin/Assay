@@ -3,8 +3,8 @@
 Document status: normative product specification for the Assay evaluation
 harness. Last revised: 2026-08-30.
 
-Implementation status: R0 and R1 have code and local evidence on gate branches,
-but neither is accepted. The only branch-local R1 command evidence is for the
+Implementation status: R0 is accepted; R1 has code and local evidence in
+progress on its gate branch. The only branch-local R1 command evidence is for the
 source-built `validate` and `run` paths against the deterministic simulated
 adapter, with no isolation and no real agent or provider support.
 
@@ -1255,10 +1255,10 @@ has not been accepted.
 
 Current state, stated verbatim wherever the current state is described:
 
-> Assay is under implementation. Gates R0 and R1 have code and local evidence
-> on gate branches, but neither is accepted: R0 is blocked by unavailable
-> private-repository branch protection and review controls on the current GitHub
-> plan, and R1 depends on accepted R0. No product gate is accepted.
+> Assay is under implementation. Gate R0 is accepted with repository,
+> toolchain, CI, and GitHub governance evidence. Gate R1 has code and local
+> evidence in progress; gates R2 through R10 remain planned. No evaluation
+> product gate is accepted.
 
 ### 12.1 R0 — Repository, toolchain, and CI identity
 

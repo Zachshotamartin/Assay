@@ -9,10 +9,10 @@ documents control, in that order.
 
 Last revised: 2026-08-30.
 
-> Assay is under implementation. Gates R0 and R1 have code and local evidence
-> on gate branches, but neither is accepted: R0 is blocked by unavailable
-> private-repository branch protection and review controls on the current GitHub
-> plan, and R1 depends on accepted R0. No product gate is accepted.
+> Assay is under implementation. Gate R0 is accepted with repository,
+> toolchain, CI, and GitHub governance evidence. Gate R1 has code and local
+> evidence in progress; gates R2 through R10 remain planned. No evaluation
+> product gate is accepted.
 
 Assay evaluates coding and tool-using agents. An agent participates in an
 evaluation through an **adapter**: a subprocess that speaks the versioned

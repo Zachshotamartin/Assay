@@ -4,10 +4,10 @@
 document drafts the public story Assay will tell once the release gates in
 [BUILD_PLAN.md](BUILD_PLAN.md) accept. Nothing here is publishable today:
 
-> Assay is under implementation. Gates R0 and R1 have code and local evidence
-> on gate branches, but neither is accepted: R0 is blocked by unavailable
-> private-repository branch protection and review controls on the current GitHub
-> plan, and R1 depends on accepted R0. No product gate is accepted.
+> Assay is under implementation. Gate R0 is accepted with repository,
+> toolchain, CI, and GitHub governance evidence. Gate R1 has code and local
+> evidence in progress; gates R2 through R10 remain planned. No evaluation
+> product gate is accepted.
 
 Under conflict rule 11 in [docs/README.md](README.md), this document is
 descriptive, not normative, and every claim in it is subordinate to gate

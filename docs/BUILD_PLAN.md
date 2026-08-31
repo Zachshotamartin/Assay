@@ -134,27 +134,26 @@ evidence may cite an unaccepted predecessor's behavior.
 
 ## 2. Current Baseline: What Is and Is Not Built
 
-### 2.1 Branch implementation exists; no gate is accepted
+### 2.1 Repository substrate accepted; R1 branch implementation exists
 
-R0 and R1 have code and local evidence on gate branches. Those branches
-contain the Node.js substrate, contracts, task and suite formats, the
+R0 is accepted on main with repository, toolchain, CI, and live GitHub
+governance evidence. R1 has code and local evidence on its gate branch. It
+contains the task and suite formats, the
 source-built `validate` and `run` CLI paths, the deterministic simulated
 adapter, assertions, redaction, the local evidence store, fixtures, tests,
-and deterministic CI workflow definitions. They are in-progress artifacts,
-not an accepted release or a product-availability claim. R0 remains blocked
-by unavailable private-repository branch protection and review controls on
-the current GitHub plan; R1 depends on accepted R0. R2 through R10 remain
-planned.
+and deterministic CI workflow definitions. R1 is an in-progress artifact,
+not an accepted release or a product-availability claim. R2 through R10
+remain planned.
 
 ### 2.2 Current product claim
 
 Until R1 is accepted, the truthful claim — used verbatim wherever the
 current state is described — is:
 
-> Assay is under implementation. Gates R0 and R1 have code and local evidence
-> on gate branches, but neither is accepted: R0 is blocked by unavailable
-> private-repository branch protection and review controls on the current GitHub
-> plan, and R1 depends on accepted R0. No product gate is accepted.
+> Assay is under implementation. Gate R0 is accepted with repository,
+> toolchain, CI, and GitHub governance evidence. Gate R1 has code and local
+> evidence in progress; gates R2 through R10 remain planned. No evaluation
+> product gate is accepted.
 
 ### 2.3 What may not be claimed
 
@@ -673,7 +672,7 @@ differentiating implementation.
 
 ## 5. R0 — Repository, Toolchain, and CI Identity
 
-**Status:** in progress.
+**Status:** accepted.
 
 **Effort range:** 3–5 focused days, including GitHub verification and CI
 bring-up.

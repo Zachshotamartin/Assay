@@ -9,10 +9,10 @@ stochastic comparison as a statistics problem, refusing to call a difference a
 regression without a significance test, confidence intervals, and stated
 power.
 
-> Assay is under implementation. Gates R0 and R1 have code and local evidence
-> on gate branches, but neither is accepted: R0 is blocked by unavailable
-> private-repository branch protection and review controls on the current GitHub
-> plan, and R1 depends on accepted R0. No product gate is accepted.
+> Assay is under implementation. Gate R0 is accepted with repository,
+> toolchain, CI, and GitHub governance evidence. Gate R1 has code and local
+> evidence in progress; gates R2 through R10 remain planned. No evaluation
+> product gate is accepted.
 
 The root [README](../README.md) is the quick orientation and current
 implementation snapshot. It states the honest status, the planned command
@@ -126,8 +126,8 @@ means implemented on mainline and backed by its named automated gate. **In
 progress** means present on a branch and never a release claim. **Planned**
 means specified, not implemented. **Deferred** means outside the named phase
 and forbidden as completion evidence. A package, type, stub, or happy-path
-unit test is never completion. Today R0 and R1 are in progress on gate
-branches, R2 through R10 are planned, and no gate is accepted.
+unit test is never completion. Today R0 is accepted, R1 is in progress on its
+gate branch, and R2 through R10 are planned.
 
 ## Requirements and Evidence
 
@@ -153,10 +153,8 @@ Documentation must follow these rules:
   boundary and the escape tests that defend it.
 - Record a product or architecture reversal in a new ADR instead of silently
   editing away the earlier decision.
-- Describe the current state only with this claim, verbatim: Assay is under
-  implementation. Gates R0 and R1 have code and local evidence on gate
-  branches, but neither is accepted: R0 is blocked by unavailable
-  private-repository branch protection and review controls on the current
-  GitHub plan, and R1 depends on accepted R0. No product gate is accepted.
+- Describe the current state only with the verbatim claim recorded in
+  `docs/status.yaml`; the documentation checker enforces it across every
+  governed claim document.
 
 Last revised: 2026-08-30.

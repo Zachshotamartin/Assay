@@ -19,24 +19,24 @@ deterministic synthetic agent for zero dollars.**
 
 ## Implementation Status
 
-> Assay is under implementation. Gates R0 and R1 have code and local evidence
-> on gate branches, but neither is accepted: R0 is blocked by unavailable
-> private-repository branch protection and review controls on the current GitHub
-> plan, and R1 depends on accepted R0. No product gate is accepted.
+> Assay is under implementation. Gate R0 is accepted with repository,
+> toolchain, CI, and GitHub governance evidence. Gate R1 has code and local
+> evidence in progress; gates R2 through R10 remain planned. No evaluation
+> product gate is accepted.
 
-Only the branch-local R0 and R1 surfaces named below have implementation and
-local evidence. They are not accepted product capabilities. The table is the
-complete current inventory.
+R0 is accepted on main. Only the branch-local R1 surfaces named below have
+evaluation-product implementation and local evidence; they are not accepted
+product capabilities. The table is the complete current inventory.
 
 | Area | Exists now | Planned |
 | --- | --- | --- |
-| Documentation | The normative set, machine-checked status, and governed R0/R1 branch fixtures | Accepted-gate evidence and gate-by-gate current-versus-planned updates |
-| Code | On gate branches: the Node 22 substrate plus the R1 task/suite loaders, deterministic runner, simulated adapter, deterministic assertions, capture-boundary redaction, and local evidence store | Product packages added only by their owning gates |
+| Documentation | The normative set, accepted R0 evidence, machine-checked status, and governed R1 branch fixtures | Gate-by-gate current-versus-planned updates |
+| Code | Accepted Node 22 substrate plus branch-local R1 task/suite loaders, deterministic runner, simulated adapter, deterministic assertions, capture-boundary redaction, and local evidence store | Product packages added only by their owning gates |
 | CLI | Source-built `--help`, `--version`, `validate`, and `run` have local R1 evidence; `run` supports only the in-repo simulated adapter | `assay init/compare/report/matrix/judge/view/gc/db/export/delete/doctor/redact-check`, real-agent adapters, and release packaging |
 | Sandbox | None; every R1 execution is recorded as `unsafe_host` evidence and emits the unsafe-host warning | Per-run OCI containers, no network by default, and guaranteed cleanup (R2; ADR-0004) |
 | Statistics | None | Wilson intervals, exact tests, FDR control, seeded bootstrap, MDE reporting (ADR-0006) |
-| CI integration | Deterministic R0/R1 workflows and local checks exist on gate branches; final R1 CI links are pending, and required private-repository controls remain plan-blocked | GitHub Action posting a delta table and blocking on regression (R8) |
-| Evidence | R0 and R1 have local gate-branch evidence, but neither gate is accepted and no R1 acceptance document exists yet | Gate-by-gate acceptance evidence per `docs/BUILD_PLAN.md` |
+| CI integration | R0 CI and GitHub governance are accepted; deterministic R1 workflow and local checks exist while final R1 CI links are pending | GitHub Action posting a delta table and blocking on regression (R8) |
+| Evidence | R0 is accepted; R1 has a truthful in-progress local evidence record | Gate-by-gate acceptance evidence per `docs/BUILD_PLAN.md` |
 
 ## Landscape
 
@@ -156,13 +156,13 @@ a distinct failure with its own exit code, never folded into quality.
 
 ## Release Gates
 
-The build plan defines eleven gates. Each unlocks specific evidence; R0 and R1
-are in progress and no gate is accepted. The full definitions, tickets, and dependency edges are in
+The build plan defines eleven gates. Each unlocks specific evidence; R0 is
+accepted, R1 is in progress, and R2 through R10 are planned. The full definitions, tickets, and dependency edges are in
 [docs/BUILD_PLAN.md](docs/BUILD_PLAN.md).
 
 | Gate | Title | Evidence unlocked | Status |
 | --- | --- | --- | --- |
-| R0 | Repository, toolchain, and CI identity | Repository, toolchain, CI, and architecture checks exist and are green. | in progress |
+| R0 | Repository, toolchain, and CI identity | Repository, toolchain, CI, and architecture checks exist and are green. | accepted |
 | R1 | Task format, runner, and deterministic assertions | A suite runs against the simulated agent and produces a byte-reproducible result. | in progress |
 | R2 | Sandboxed execution | Fixtures materialize in an isolated container with enforced limits and guaranteed cleanup, even after a killed run. | planned |
 | R3 | Real providers, BYOK, and usage accounting | A real provider runs through BYOK with token, cost, and latency accounting reconciled against provider-reported usage. | planned |
