@@ -27,6 +27,7 @@ import {
 } from "./blob-store.js";
 import {
   acquireWriterLock,
+  ensureStoreIdentityMarker,
   resolveStorePaths,
   type AcquiredWriterLock,
   type StorePaths
@@ -45,7 +46,8 @@ import {
   type StoreDiagnostics,
   type StoredEvent,
   type StoreFaultMarker,
-  type StoreLockPolicy
+  type StoreLockPolicy,
+  type TaskRunEventInput
 } from "./types.js";
 import {
   validateRunRecordJson,
@@ -992,6 +994,181 @@ class SqliteRunStore implements RunStore {
     return taskRunId;
   }
 
+  async appendTaskRunWithEvents(
+    runId: RunId,
+    input: NewTaskRunRecord,
+    events: readonly TaskRunEventInput[]
+  ): Promise<TaskRunId> {
+    this.#assertOpen();
+    await this.getRun(runId);
+
+    const existing = this.#read(() =>
+      this.#database
+        .prepare<[string, string, number], TaskRunRow>(
+          "SELECT task_run_id, run_id, task_id, task_content_hash, attempt, state, outcome, error_category, record_json, record_hash FROM task_runs WHERE run_id = ? AND task_id = ? AND attempt = ?"
+        )
+        .get(runId, input.taskId, input.attempt)
+    );
+    if (existing !== undefined) {
+      const existingRecord = await this.#verifiedTaskRun(existing);
+      if (existingRecord.trajectoryBlob !== null) {
+        await this.#ensureBlobDurable(existingRecord.trajectoryBlob);
+      }
+      if (existingRecord.workspaceSnapshot !== null) {
+        await this.#ensureBlobDurable(existingRecord.workspaceSnapshot);
+      }
+      const expected = canonicalJson({
+        taskRunId: existingRecord.taskRunId,
+        runId,
+        ...input
+      });
+      if (expected !== existing.record_json) {
+        throw new AssayError(
+          "internal_invariant",
+          `internal_invariant: task run natural key (${runId}, ${input.taskId}, ${input.attempt}) already names different immutable evidence; no row changed; append a new attempt`
+        );
+      }
+      const seenSequences = new Set<number>();
+      for (const item of events) {
+        const eventJson = this.#validatedTaskEventJson(
+          runId,
+          existingRecord.taskRunId,
+          item,
+          seenSequences
+        );
+        const eventRow = this.#read(() =>
+          this.#database
+            .prepare<[string, number], EventRow>(
+              "SELECT event_id, run_id, sequence, event_json FROM events WHERE run_id = ? AND sequence = ?"
+            )
+            .get(runId, item.sequence)
+        );
+        if (eventRow === undefined || eventRow.event_json !== eventJson) {
+          throw new AssayError(
+            "internal_invariant",
+            `internal_invariant: replayed task-run batch ${existingRecord.taskRunId} does not match durable event sequence ${item.sequence}; no row changed; preserve the original event identity`
+          );
+        }
+      }
+      return existingRecord.taskRunId;
+    }
+
+    if (input.trajectoryBlob !== null) {
+      await this.#ensureBlobDurable(input.trajectoryBlob);
+    }
+    if (input.workspaceSnapshot !== null) {
+      await this.#ensureBlobDurable(input.workspaceSnapshot);
+    }
+
+    const taskRunId = this.#options.taskRunIdSource.next();
+    createTaskRunId(taskRunId);
+    const record: TaskRunRecord = { taskRunId, runId, ...input };
+    const encoded = canonicalRecord(record);
+    validateTaskRunRecordJson(encoded.json);
+    const seenSequences = new Set<number>();
+    const seenEventIds = new Set<string>();
+    const preparedEvents = events.map((item) => {
+      const eventJson = this.#validatedTaskEventJson(
+        runId,
+        taskRunId,
+        item,
+        seenSequences
+      );
+      const eventId = ensureEventId(this.#options.eventIdSource.next());
+      if (seenEventIds.has(eventId)) {
+        throw new AssayError(
+          "internal_invariant",
+          `internal_invariant: injected event id ${eventId} repeated within one task-run batch; no row changed; repair the IdSource`
+        );
+      }
+      seenEventIds.add(eventId);
+      return { eventId, sequence: item.sequence, eventJson };
+    });
+
+    invokeFault(this.#options.faultInjector, "before_task_run_commit");
+    try {
+      await this.#writeTransaction(() => {
+        this.#database
+          .prepare<
+            [string, string, string, string, number, string, string | null, string | null, string, string]
+          >(
+            "INSERT INTO task_runs (task_run_id, run_id, task_id, task_content_hash, attempt, state, outcome, error_category, record_json, record_hash) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+          )
+          .run(
+            taskRunId,
+            runId,
+            record.taskId,
+            record.taskContentHash,
+            record.attempt,
+            record.state,
+            record.outcome,
+            record.errorCategory,
+            encoded.json,
+            encoded.hash
+          );
+        if (preparedEvents.length > 0) {
+          invokeFault(this.#options.faultInjector, "before_event_commit");
+        }
+        const insertEvent = this.#database.prepare<[string, string, number, string]>(
+          "INSERT INTO events (event_id, run_id, sequence, event_json) VALUES (?, ?, ?, ?)"
+        );
+        for (const prepared of preparedEvents) {
+          insertEvent.run(prepared.eventId, runId, prepared.sequence, prepared.eventJson);
+        }
+      });
+    } catch (error) {
+      if (isConstraintError(error)) {
+        throw new AssayError(
+          "internal_invariant",
+          `internal_invariant: task-run batch for ${taskRunId} collided with an immutable task or event identity; the whole batch rolled back; preserve prior evidence and append a new attempt`,
+          { cause: error }
+        );
+      }
+      throw error;
+    }
+    invokeFault(this.#options.faultInjector, "after_task_run_commit");
+    if (preparedEvents.length > 0) {
+      invokeFault(this.#options.faultInjector, "after_event_commit");
+    }
+    return taskRunId;
+  }
+
+  #validatedTaskEventJson(
+    runId: RunId,
+    taskRunId: TaskRunId,
+    input: TaskRunEventInput,
+    seenSequences: Set<number>
+  ): string {
+    if (!Number.isSafeInteger(input.sequence) || input.sequence < 0) {
+      throw new AssayError(
+        "invalid_invocation",
+        "invalid_invocation: event sequence must be a non-negative safe integer; no task-run batch was written; provide the next durable sequence"
+      );
+    }
+    if (seenSequences.has(input.sequence)) {
+      throw new AssayError(
+        "internal_invariant",
+        `internal_invariant: task-run batch repeats event sequence ${input.sequence}; no row changed; allocate each sequence once`
+      );
+    }
+    seenSequences.add(input.sequence);
+    if (input.event.run_id !== runId) {
+      throw new AssayError(
+        "internal_invariant",
+        `internal_invariant: event run id ${input.event.run_id} does not match batch target ${runId}; no task-run batch was written; repair the runner event binding`
+      );
+    }
+    if (!("task_run_id" in input.event) || input.event.task_run_id !== taskRunId) {
+      throw new AssayError(
+        "internal_invariant",
+        `internal_invariant: associated event sequence ${input.sequence} does not belong to task run ${taskRunId}; no task-run batch was written; repair the runner event binding`
+      );
+    }
+    const eventJson = canonicalJson(input.event);
+    parseAssayEvent(eventJson);
+    return eventJson;
+  }
+
   async appendEvent(runId: RunId, sequence: number, event: AssayEvent): Promise<string> {
     this.#assertOpen();
     if (!Number.isSafeInteger(sequence) || sequence < 0) {
@@ -1294,6 +1471,7 @@ export async function openRunStore(options: RunStoreOptions): Promise<RunStore> 
   );
   let database: Database.Database | undefined;
   try {
+    await ensureStoreIdentityMarker(paths, options.processId);
     await validateExistingDatabasePath(paths.databasePath);
     await new ContentAddressedBlobStore(
       paths,

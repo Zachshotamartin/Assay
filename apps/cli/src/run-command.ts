@@ -45,7 +45,11 @@ import {
   type JsonValue,
   type RedactionManifest
 } from "@assay/redaction";
-import { openRunStore, type RunStore } from "@assay/run-store";
+import {
+  openRunStore,
+  type RunStore,
+  type TaskRunEventInput
+} from "@assay/run-store";
 import {
   executeTaskRun,
   runTaskRunsSequentially,
@@ -736,17 +740,15 @@ function assayEventsForTask(
   return events;
 }
 
-async function appendEventBatch(
-  store: RunStore,
-  runId: AssayEvent["run_id"],
+function validatedEventBatch(
   events: readonly AssayEvent[],
-  sequence: { value: number }
-): Promise<void> {
+  firstSequence: number
+): readonly TaskRunEventInput[] {
   // Every subject-controlled payload admitted here has already crossed its
   // schema-specific bounded redaction session. Re-scanning the containing
   // event would treat immutable UUIDs and derived seeds as entropy secrets and
   // invalidate the event schema.
-  for (const item of events) {
+  return events.map((item, index) => {
     let validated: AssayEvent;
     try {
       validated = parseAssayEvent(canonicalJson(item));
@@ -757,8 +759,20 @@ async function appendEventBatch(
         { cause }
       );
     }
-    await store.appendEvent(runId, sequence.value, validated);
-    sequence.value += 1;
+    return { sequence: firstSequence + index, event: validated };
+  });
+}
+
+async function appendEventBatch(
+  store: RunStore,
+  runId: AssayEvent["run_id"],
+  events: readonly AssayEvent[],
+  sequence: { value: number }
+): Promise<void> {
+  const validated = validatedEventBatch(events, sequence.value);
+  for (const item of validated) {
+    await store.appendEvent(runId, item.sequence, item.event);
+    sequence.value = item.sequence + 1;
   }
 }
 
@@ -1010,7 +1024,18 @@ export async function executeRunCommand(
         persist: async (_currentPlan, lifecycle, evidence) => {
           const trajectoryBlob = evidence === undefined ? null : await store.putBlob(evidence.trajectoryBytes);
           const workspaceSnapshot = evidence === undefined ? null : await store.putBlob(evidence.snapshotBytes);
-          const taskRunId = await store.appendTaskRun(runId, {
+          const associatedEvents = validatedEventBatch(
+            assayEventsForTask(
+              runId,
+              plan,
+              evidence,
+              lifecycle,
+              "unsafe_host",
+              runtime.clock.wallTime()
+            ),
+            sequence.value
+          );
+          const taskRunId = await store.appendTaskRunWithEvents(runId, {
             taskId: createTaskId(plan.task.id),
             taskContentHash: createContentHash(plan.task.source.contentHash),
             attempt: plan.repetition,
@@ -1023,19 +1048,14 @@ export async function executeRunCommand(
             usage: evidence === undefined ? null : usageFrom(evidence.collection.events),
             startedAtUtc: startedAtUtc.get(plan.taskRunId) ?? runtime.clock.wallTime(),
             endedAtUtc: runtime.clock.wallTime()
-          });
+          }, associatedEvents);
           if (taskRunId !== plan.taskRunId) {
             throw new AssayError(
               "internal_invariant",
               `internal_invariant: reserved task-run id ${plan.taskRunId} was persisted as ${taskRunId}; repair the composition identifier source`
             );
           }
-          await appendEventBatch(
-            store,
-            runId,
-            assayEventsForTask(runId, plan, evidence, lifecycle, "unsafe_host", runtime.clock.wallTime()),
-            sequence
-          );
+          sequence.value += associatedEvents.length;
         }
       }, signal);
     }, runtime.signal);

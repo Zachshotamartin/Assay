@@ -17,8 +17,10 @@ import type {
 export type { NewRunRecord, NewTaskRunRecord, RunRecord, TaskRunRecord } from "@assay/contracts";
 
 export const STORE_SCHEMA_VERSION = 1 as const;
+export const STORE_CREATED_BY_VERSION = "0.0.0" as const;
 export const MAX_RECORD_JSON_BYTES = 4_194_304;
 export const MAX_LOCK_FILE_BYTES = 4_096;
+export const MAX_STORE_CONFIG_BYTES = 4_096;
 
 export type StoreFaultMarker =
   | "before_blob_rename"
@@ -59,6 +61,11 @@ export type RunSummary = RunRecord;
 
 export interface StoredEvent {
   readonly eventId: string;
+  readonly sequence: number;
+  readonly event: AssayEvent;
+}
+
+export interface TaskRunEventInput {
   readonly sequence: number;
   readonly event: AssayEvent;
 }
@@ -107,6 +114,11 @@ export interface RunStore {
   appendRun(run: NewRunRecord): Promise<RunId>;
   settleRun(runId: RunId, status: Exclude<RunStatus, "in_progress">): Promise<void>;
   appendTaskRun(runId: RunId, record: NewTaskRunRecord): Promise<TaskRunId>;
+  appendTaskRunWithEvents(
+    runId: RunId,
+    record: NewTaskRunRecord,
+    events: readonly TaskRunEventInput[]
+  ): Promise<TaskRunId>;
   appendEvent(runId: RunId, sequence: number, event: AssayEvent): Promise<string>;
   putBlob(bytes: Uint8Array): Promise<BlobHash>;
   getBlob(hash: BlobHash): Promise<Uint8Array>;

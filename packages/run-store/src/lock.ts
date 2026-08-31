@@ -1,9 +1,11 @@
+import { createHash } from "node:crypto";
 import {
   chmod,
   lstat,
   mkdir,
   open,
   readFile,
+  rename,
   stat,
   unlink,
   type FileHandle
@@ -12,7 +14,13 @@ import { isAbsolute, join, parse, relative, resolve, sep } from "node:path";
 
 import { AssayError, canonicalJson, type Clock } from "@assay/contracts";
 
-import { MAX_LOCK_FILE_BYTES, type StoreLockPolicy } from "./types.js";
+import {
+  MAX_LOCK_FILE_BYTES,
+  MAX_STORE_CONFIG_BYTES,
+  STORE_CREATED_BY_VERSION,
+  STORE_SCHEMA_VERSION,
+  type StoreLockPolicy
+} from "./types.js";
 
 const DEFAULT_LOCK_POLICY: StoreLockPolicy = { maxAttempts: 5, retryDelayMs: 25 };
 
@@ -21,9 +29,16 @@ interface LockContents {
   readonly acquiredAtUtc: string;
 }
 
+interface StoreIdentityMarker {
+  readonly schemaVersion: typeof STORE_SCHEMA_VERSION;
+  readonly createdByVersion: string;
+  readonly storeId: string;
+}
+
 export interface StorePaths {
   readonly projectRoot: string;
   readonly storeDirectory: string;
+  readonly configPath: string;
   readonly databasePath: string;
   readonly objectsPath: string;
   readonly temporaryPath: string;
@@ -162,6 +177,7 @@ export async function resolveStorePaths(
   return {
     projectRoot: absoluteProjectRoot,
     storeDirectory,
+    configPath: join(storeDirectory, "config"),
     databasePath: join(storeDirectory, "assay.db"),
     objectsPath,
     temporaryPath,
@@ -169,6 +185,128 @@ export async function resolveStorePaths(
     quarantineObjectsPath,
     writerLockPath: join(storeDirectory, "writer.lock")
   };
+}
+
+function storeIdentityError(message: string, cause?: unknown): AssayError {
+  return new AssayError(
+    "storage_corrupt",
+    `storage_corrupt: store identity marker ${message}; no database record changed; inspect the config file with assay doctor`,
+    cause === undefined ? undefined : { cause }
+  );
+}
+
+function parseStoreIdentity(bytes: string): StoreIdentityMarker {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(bytes) as unknown;
+  } catch (cause) {
+    throw storeIdentityError("is not valid JSON", cause);
+  }
+  if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+    throw storeIdentityError("must be a canonical JSON object");
+  }
+  const record = parsed as Record<string, unknown>;
+  if (
+    Object.keys(record).sort().join(",") !== "createdByVersion,schemaVersion,storeId" ||
+    typeof record["createdByVersion"] !== "string" ||
+    !/^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/u.test(record["createdByVersion"]) ||
+    typeof record["storeId"] !== "string" ||
+    !/^[0-9a-f]{64}$/u.test(record["storeId"])
+  ) {
+    throw storeIdentityError("has an invalid schema, creator version, or store id");
+  }
+  if (!Number.isSafeInteger(record["schemaVersion"])) {
+    throw storeIdentityError("has a non-integer schema version");
+  }
+  if (record["schemaVersion"] !== STORE_SCHEMA_VERSION) {
+    throw new AssayError(
+      "storage_migration_required",
+      `storage_migration_required: store identity schema ${String(record["schemaVersion"])} does not match required schema ${STORE_SCHEMA_VERSION}; no state changed; run assay db migrate or upgrade the Assay binary`
+    );
+  }
+  if (canonicalJson(parsed) !== bytes) {
+    throw storeIdentityError("is not encoded as canonical JSON");
+  }
+  return {
+    schemaVersion: STORE_SCHEMA_VERSION,
+    createdByVersion: record["createdByVersion"],
+    storeId: record["storeId"]
+  };
+}
+
+async function readStoreIdentity(paths: StorePaths): Promise<StoreIdentityMarker | undefined> {
+  let metadata;
+  try {
+    metadata = await lstat(paths.configPath);
+  } catch (error) {
+    if (isNodeError(error) && error.code === "ENOENT") {
+      return undefined;
+    }
+    throw storeIdentityError("could not be inspected", error);
+  }
+  if (
+    !metadata.isFile() ||
+    metadata.isSymbolicLink() ||
+    (metadata.mode & 0o777) !== 0o600 ||
+    metadata.size > MAX_STORE_CONFIG_BYTES
+  ) {
+    throw storeIdentityError(`at ${JSON.stringify(paths.configPath)} must be a private regular file no larger than ${MAX_STORE_CONFIG_BYTES} bytes`);
+  }
+  try {
+    return parseStoreIdentity(await readFile(paths.configPath, "utf8"));
+  } catch (error) {
+    if (error instanceof AssayError) {
+      throw error;
+    }
+    throw storeIdentityError("could not be read", error);
+  }
+}
+
+function derivedStoreId(paths: StorePaths): string {
+  return createHash("sha256")
+    .update(canonicalJson({ kind: "assay-store", storeDirectory: paths.storeDirectory }), "utf8")
+    .digest("hex");
+}
+
+async function syncDirectory(path: string): Promise<void> {
+  const handle = await open(path, "r");
+  try {
+    await handle.sync();
+  } finally {
+    await handle.close();
+  }
+}
+
+export async function ensureStoreIdentityMarker(
+  paths: StorePaths,
+  processId: number
+): Promise<StoreIdentityMarker> {
+  const existing = await readStoreIdentity(paths);
+  if (existing !== undefined) {
+    return existing;
+  }
+  const marker: StoreIdentityMarker = {
+    schemaVersion: STORE_SCHEMA_VERSION,
+    createdByVersion: STORE_CREATED_BY_VERSION,
+    storeId: derivedStoreId(paths)
+  };
+  const temporaryPath = `${paths.configPath}.${processId}.tmp`;
+  let handle: FileHandle | undefined;
+  try {
+    handle = await open(temporaryPath, "wx", 0o600);
+    await handle.writeFile(canonicalJson(marker), { encoding: "utf8" });
+    await handle.sync();
+    await handle.chmod(0o600);
+    await handle.close();
+    handle = undefined;
+    await rename(temporaryPath, paths.configPath);
+    await syncDirectory(paths.storeDirectory);
+    return marker;
+  } catch (cause) {
+    await handle?.close().catch(() => undefined);
+    await unlink(temporaryPath).catch(() => undefined);
+    throw storeIdentityError("could not be created atomically", cause);
+  }
 }
 
 function validatePolicy(policy: StoreLockPolicy | undefined): StoreLockPolicy {
