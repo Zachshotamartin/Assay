@@ -95,7 +95,7 @@ describe("GitHub governance payloads", () => {
     });
 
     await expect(readFile(operationsPath, "utf8")).resolves.toContain(
-      "Golden semantic review: line from the pull-request body"
+      "`Golden semantic review:` line from the pull-request body"
     );
   });
 });

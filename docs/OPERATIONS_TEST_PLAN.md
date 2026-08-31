@@ -320,6 +320,14 @@ scopes require a security-boundary review. Golden and recorded-fixture
 changes are reviewed semantically; regeneration alone is not approval
 (NFR-MAINT-005).
 
+The repository permits squash merges only and configures their title and
+message from the pull request. Any pull request changing a golden carries
+exactly one substantive `Golden semantic review:` line. That
+`Golden semantic review:` line from the pull-request body must be retained in
+the squash commit message so the post-merge push gate evaluates the same
+review evidence as the pull-request gate. A manual `gh pr merge --body`
+override is forbidden for such a change unless it includes that exact line.
+
 ### 3.4 `main` branch protection
 
 Once each job exists, protect `main` via `gh api` with:
