@@ -1,0 +1,106 @@
+{
+  "schemaVersion": 1,
+  "lanes": {
+    "unit": [
+      "apps/cli/src/capture-redaction.test.ts",
+      "apps/cli/src/cli.test.ts",
+      "packages/adapter-core/src/frames/codec.test.ts",
+      "packages/adapter-core/src/frames/line-splitter.test.ts",
+      "packages/adapter-core/src/supervisor.test.ts",
+      "packages/adapter-simulated/src/scenario.test.ts",
+      "packages/assertions/src/diff-matches.test.ts",
+      "packages/config/src/config.test.ts",
+      "packages/contracts/src/canonical-json.test.ts",
+      "packages/contracts/src/errors.test.ts",
+      "packages/contracts/src/events.test.ts",
+      "packages/contracts/src/ids.test.ts",
+      "packages/contracts/src/records.test.ts",
+      "packages/redaction/src/deep-bytes.test.ts",
+      "packages/redaction/src/entropy.test.ts",
+      "packages/redaction/src/patterns.test.ts",
+      "packages/redaction/src/session.test.ts",
+      "packages/runner/src/orchestration.test.ts",
+      "packages/runner/src/state-machine.test.ts",
+      "packages/task-format/src/inheritance.test.ts",
+      "packages/task-format/src/load-yaml.test.ts",
+      "packages/task-format/src/matrix.test.ts",
+      "packages/task-format/src/reference-fixture.test.ts",
+      "packages/task-format/src/resolve-suite.test.ts",
+      "packages/task-format/src/schemas/schema-corpus.test.ts",
+      "packages/task-format/src/schemas/schema-fixtures.test.ts",
+      "scripts/check-architecture.test.ts",
+      "scripts/check-docs.test.ts",
+      "scripts/check-test-evidence.test.ts",
+      "scripts/ci-workflow.test.ts",
+      "scripts/dependency-review.test.ts",
+      "scripts/fixture-governance.test.ts",
+      "scripts/github-governance.test.ts",
+      "scripts/golden-policy.test.ts",
+      "scripts/package-metadata.test.ts"
+    ],
+    "property": [
+      "packages/contracts/src/canonical-json.property.test.ts",
+      "packages/contracts/src/ids.property.test.ts",
+      "packages/task-format/src/matrix.property.test.ts"
+    ],
+    "integration": [
+      "apps/cli/test/integration/run.test.ts",
+      "apps/cli/test/integration/validate.test.ts",
+      "packages/adapter-simulated/test/integration/scenario-filesystem.test.ts",
+      "packages/adapter-simulated/test/integration/subprocess.test.ts",
+      "packages/assertions/test/integration/checker-worker.test.ts",
+      "packages/assertions/test/integration/deterministic.test.ts",
+      "packages/run-store/test/integration/crash-injection.test.ts",
+      "packages/run-store/test/integration/store.test.ts"
+    ],
+    "e2e-simulated": [
+      "scripts/r1-reproducibility.test.ts",
+      "tests/e2e/subprocess.test.ts"
+    ]
+  },
+  "packagedE2e": [
+    "tests/e2e/subprocess.test.ts"
+  ],
+  "regressions": [
+    {
+      "file": "apps/cli/test/integration/run.test.ts",
+      "title": "keeps a clean run_failed terminal assertion-owned and exposes adapter exit zero [FR-RUN-003]",
+      "requirementId": "FR-RUN-003"
+    },
+    {
+      "file": "apps/cli/test/integration/validate.test.ts",
+      "title": "aggregates deterministic line-column findings across and within documents [FR-TASK-010]",
+      "requirementId": "FR-TASK-010"
+    },
+    {
+      "file": "packages/assertions/test/integration/checker-worker.test.ts",
+      "title": "refuses a real loopback network attempt with zero connections [FR-ASSERT-004]",
+      "requirementId": "FR-ASSERT-004"
+    },
+    {
+      "file": "packages/task-format/src/load-yaml.test.ts",
+      "title": "FR-TASK-012 warns when a task id differs from its file basename",
+      "requirementId": "FR-TASK-012"
+    },
+    {
+      "file": "scripts/check-docs.test.ts",
+      "title": "rejects a synchronized claim that erases R1's unaccepted status [NFR-MAINT-004]",
+      "requirementId": "NFR-MAINT-004"
+    },
+    {
+      "file": "scripts/ci-workflow.test.ts",
+      "title": "builds packaged artifacts once before e2e and never races a nested clean build [NFR-MAINT-006]",
+      "requirementId": "NFR-MAINT-006"
+    },
+    {
+      "file": "scripts/check-docs.test.ts",
+      "title": "stages deferred exit-code reachability at the subsystem-owning gates [FR-RUN-010]",
+      "requirementId": "FR-RUN-010"
+    },
+    {
+      "file": "scripts/ci-workflow.test.ts",
+      "title": "exposes the exact required e2e context while retaining macOS evidence [NFR-DET-004]",
+      "requirementId": "NFR-DET-004"
+    }
+  ]
+}

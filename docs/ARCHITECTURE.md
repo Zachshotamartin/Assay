@@ -1,11 +1,13 @@
 # Assay Architecture
 
-Document status: normative planning document. Everything described here is
-`planned`. Last revised: 2026-08-30.
+Document status: normative architecture specification. R0 and R1 are
+accepted; the remaining architecture is planned. Last revised: 2026-08-30.
 
-> Assay is under implementation. Gate R0 is accepted with repository,
-> toolchain, CI, and GitHub governance evidence. Gates R1 through R10 remain
-> planned. No product gate beyond the repository substrate is accepted.
+> Assay is under implementation. Gates R0 and R1 are accepted with repository
+> governance, task-format, deterministic runner, assertion, store-core, and
+> cross-platform CI evidence. Gates R2 through R10 remain planned. No sandbox,
+> real-provider, trajectory, budget, statistical, judge, Action, viewer, or
+> packaged-release gate is accepted.
 
 This document controls component boundaries and interfaces. It is subordinate
 to accepted ADRs, to PRODUCT_REQUIREMENTS.md for user-visible semantics, to
@@ -29,7 +31,7 @@ Companion documents:
 - [PRIVACY_AND_DATA.md](./PRIVACY_AND_DATA.md) — data locality, retention,
   export, deletion.
 - [LANDSCAPE.md](./LANDSCAPE.md) — descriptive competitive context.
-- [decisions/](./decisions/) — ADR-0001 through ADR-0011.
+- [decisions/](./decisions/) — ADR-0001 through ADR-0015.
 
 ## 1. Architecture objective and constraints
 
@@ -108,7 +110,7 @@ and holds no write capability at the type level.
 
 ```text
 apps/cli, apps/action, apps/viewer
-  -> reporting, run-store, config
+  -> runner, reporting, run-store, config
      -> stats, budgets, judge, trajectory, assertions
         -> adapter-core, sandbox, providers, task-format, redaction
            -> contracts
@@ -127,6 +129,7 @@ a build failure, not a review comment.
 | `apps/action` | GitHub Action wrapper around `assay run` + `assay compare`; PR comment upsert; status check | Action inputs schema, comment idempotency key, least-privilege permission manifest | Statistics, storage, any logic beyond invoking the CLI and posting results |
 | `apps/viewer` | React SPA plus loopback read-only server started by `assay view` | Route table, session token, diff UI, render performance budget | Mutation endpoints, network egress, importing anything but `run-store` queries and `contracts` |
 | `packages/contracts` | Branded IDs, canonical JSON encoder, error taxonomy, `AssayEvent` union, shared value types | The single error-category enum, event schema versions, ID formats | I/O of any kind, dependencies on any other Assay package |
+| `packages/runner` | Run planning, task-run lifecycle reducer, orchestration, bounded scheduling, cancellation, and cleanup policy | State transitions, task-run admission order, run outcome aggregation | Process composition, reading global env/time/randomness, constructing concrete adapters, sandboxes, or stores |
 | `packages/task-format` | YAML parsing, JSON Schema validation, `extends` merge, `matrix` expansion, format migration | Task/suite schemas, deterministic instance IDs, content hashing of tasks | Executing checkers, touching the network, reading anything outside given paths |
 | `packages/assertions` | Deterministic assertion engine and checker-worker host | Assertion evaluation order, checker worker limits, `AssertionResult` production | Judge calls, sandbox control, trajectory metric computation |
 | `packages/trajectory` | Trajectory record schema, capture pipeline, canonical serialization, metric computation | Turn model, alignment keys, metric versions, truncation markers | Redaction rules (consumes `redaction`), storage layout, statistics |

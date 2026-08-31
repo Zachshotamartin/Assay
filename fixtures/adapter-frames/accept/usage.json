@@ -1,0 +1,11 @@
+{
+  "type": "usage",
+  "seq": 7,
+  "ts": "2026-01-02T03:04:05.006Z",
+  "request_id": "request-1",
+  "prompt_tokens": 8,
+  "completion_tokens": 5,
+  "total_tokens": 13,
+  "cost_usd_micros": 0,
+  "source": "synthetic"
+}

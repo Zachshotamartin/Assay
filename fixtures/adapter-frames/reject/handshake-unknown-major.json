@@ -1,0 +1,14 @@
+{
+  "type": "handshake",
+  "seq": 1,
+  "contract": "assay-adapter/2",
+  "adapter": { "id": "future-adapter", "version": "1.0.0" },
+  "tier": "full",
+  "model": { "provider": "future", "model": "future-v1", "family": "future" },
+  "tool_catalog": [],
+  "capabilities": {
+    "usage_reporting": true,
+    "cost_reporting": false,
+    "streaming_text": true
+  }
+}

@@ -1,0 +1,33 @@
+format_version: "1.0"
+id: every-suite-field
+title: Every suite field
+include: [tasks/**/*.task.yaml, tasks/variants.matrix.yaml]
+tags:
+  any_of: [bugfix]
+  all_of: [typescript]
+  none_of: [quarantined]
+budgets:
+  tokens: { limit: 120000, aggregate: median, scope: suite }
+  wall_clock_ms: { limit: 240000, aggregate: p95, scope: suite }
+  tool_calls: { limit: 80, aggregate: median, scope: suite }
+  dollars: { limit: 4, aggregate: median, scope: suite }
+spend_ceiling_dollars: 5
+run_policy:
+  n: 10
+variants:
+  baseline:
+    adapter: simulated
+    model: synthetic/deterministic-1
+    prompt_version: "2026-08-20"
+    toolset_version: simulated/1
+    agent_version: "simulated@1"
+  candidate:
+    adapter: simulated
+    model: synthetic/deterministic-2
+comparison:
+  baseline_variant: baseline
+  candidate_variant: candidate
+  threshold: 0.05
+  alpha: 0.05
+  n: 10
+allow_same_family_judge: false

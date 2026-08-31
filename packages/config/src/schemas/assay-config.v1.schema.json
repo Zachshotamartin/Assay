@@ -1,0 +1,188 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://assay.dev/schemas/assay-config.v1.schema.json",
+  "title": "Assay configuration version 1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["configVersion"],
+  "x-assay-env-mapping": {
+    "ASSAY_CONFIG_VERSION": "configVersion",
+    "ASSAY_CONCURRENCY": "concurrency",
+    "ASSAY_RUNS_PER_TASK": "runsPerTask",
+    "ASSAY_DEFAULT_ADAPTER": "defaultAdapter",
+    "ASSAY_STORE_PATH": "storePath",
+    "ASSAY_SANDBOX_SOCKET_PATH": "sandbox.socketPath",
+    "ASSAY_SANDBOX_DEFAULT_CPUS": "sandbox.defaultCpus",
+    "ASSAY_SANDBOX_DEFAULT_MEMORY_MIB": "sandbox.defaultMemoryMib",
+    "ASSAY_SANDBOX_DEFAULT_PIDS": "sandbox.defaultPids",
+    "ASSAY_SANDBOX_DEFAULT_DISK_MIB": "sandbox.defaultDiskMib",
+    "ASSAY_SANDBOX_DEFAULT_WALL_CLOCK_MS": "sandbox.defaultWallClockMs",
+    "ASSAY_BUDGETS_SUITE_USD_CEILING_MICROS": "budgets.suiteUsdCeilingMicros",
+    "ASSAY_COMPARISON_THRESHOLD": "comparison.threshold",
+    "ASSAY_COMPARISON_BASELINE": "comparison.baseline",
+    "ASSAY_VIEWER_PORT": "viewer.port",
+    "ASSAY_REDACTION_RULESET_VERSION": "redaction.rulesetVersion",
+    "ASSAY_PRICING_CATALOG_VERSION": "pricingCatalogVersion"
+  },
+  "properties": {
+    "configVersion": {
+      "const": 1,
+      "default": 1,
+      "x-assay-env": "ASSAY_CONFIG_VERSION"
+    },
+    "concurrency": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 64,
+      "default": 4,
+      "x-assay-env": "ASSAY_CONCURRENCY"
+    },
+    "runsPerTask": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 9007199254740991,
+      "default": 10,
+      "x-assay-env": "ASSAY_RUNS_PER_TASK"
+    },
+    "defaultAdapter": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4096,
+      "default": "adapter-simulated",
+      "x-assay-env": "ASSAY_DEFAULT_ADAPTER"
+    },
+    "storePath": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4096,
+      "default": ".assay",
+      "x-assay-env": "ASSAY_STORE_PATH"
+    },
+    "sandbox": {
+      "type": "object",
+      "additionalProperties": false,
+      "default": {
+        "socketPath": null,
+        "defaultCpus": 2,
+        "defaultMemoryMib": 2048,
+        "defaultPids": 256,
+        "defaultDiskMib": 1024,
+        "defaultWallClockMs": 600000
+      },
+      "properties": {
+        "socketPath": {
+          "type": ["string", "null"],
+          "minLength": 1,
+          "maxLength": 4096,
+          "default": null,
+          "x-assay-env": "ASSAY_SANDBOX_SOCKET_PATH"
+        },
+        "defaultCpus": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991,
+          "default": 2,
+          "x-assay-env": "ASSAY_SANDBOX_DEFAULT_CPUS"
+        },
+        "defaultMemoryMib": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991,
+          "default": 2048,
+          "x-assay-env": "ASSAY_SANDBOX_DEFAULT_MEMORY_MIB"
+        },
+        "defaultPids": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991,
+          "default": 256,
+          "x-assay-env": "ASSAY_SANDBOX_DEFAULT_PIDS"
+        },
+        "defaultDiskMib": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991,
+          "default": 1024,
+          "x-assay-env": "ASSAY_SANDBOX_DEFAULT_DISK_MIB"
+        },
+        "defaultWallClockMs": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991,
+          "default": 600000,
+          "x-assay-env": "ASSAY_SANDBOX_DEFAULT_WALL_CLOCK_MS"
+        }
+      }
+    },
+    "budgets": {
+      "type": "object",
+      "additionalProperties": false,
+      "default": { "suiteUsdCeilingMicros": null },
+      "properties": {
+        "suiteUsdCeilingMicros": {
+          "type": ["integer", "null"],
+          "minimum": 0,
+          "maximum": 9007199254740991,
+          "default": null,
+          "x-assay-env": "ASSAY_BUDGETS_SUITE_USD_CEILING_MICROS"
+        }
+      }
+    },
+    "comparison": {
+      "type": "object",
+      "additionalProperties": false,
+      "default": { "threshold": 50, "baseline": null },
+      "properties": {
+        "threshold": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1000,
+          "default": 50,
+          "x-assay-env": "ASSAY_COMPARISON_THRESHOLD"
+        },
+        "baseline": {
+          "type": ["string", "null"],
+          "minLength": 1,
+          "maxLength": 4096,
+          "default": null,
+          "x-assay-env": "ASSAY_COMPARISON_BASELINE"
+        }
+      }
+    },
+    "viewer": {
+      "type": "object",
+      "additionalProperties": false,
+      "default": { "port": 0 },
+      "properties": {
+        "port": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 65535,
+          "default": 0,
+          "x-assay-env": "ASSAY_VIEWER_PORT"
+        }
+      }
+    },
+    "redaction": {
+      "type": "object",
+      "additionalProperties": false,
+      "default": { "rulesetVersion": "2026.08" },
+      "properties": {
+        "rulesetVersion": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096,
+          "default": "2026.08",
+          "x-assay-env": "ASSAY_REDACTION_RULESET_VERSION"
+        }
+      }
+    },
+    "pricingCatalogVersion": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4096,
+      "default": "catalog-v1",
+      "x-assay-env": "ASSAY_PRICING_CATALOG_VERSION"
+    }
+  }
+}

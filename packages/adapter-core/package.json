@@ -1,0 +1,35 @@
+{
+  "name": "@assay/adapter-core",
+  "version": "0.0.0",
+  "private": true,
+  "description": "assay-adapter/1 wire contract and subprocess supervisor.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Zachshotamartin/Assay.git"
+  },
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./schemas/*": "./schemas/*"
+  },
+  "files": [
+    "dist",
+    "schemas"
+  ],
+  "scripts": {
+    "build": "tsc -b",
+    "typecheck": "tsc -b --pretty false"
+  },
+  "engines": {
+    "node": ">=22.0.0 <23.0.0",
+    "npm": ">=10.0.0 <11.0.0"
+  },
+  "dependencies": {
+    "@assay/contracts": "0.0.0",
+    "ajv": "8.20.0"
+  }
+}

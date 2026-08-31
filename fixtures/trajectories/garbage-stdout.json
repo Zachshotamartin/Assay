@@ -1,0 +1,1 @@
+{"scenario_version":1,"steps":[{"emit":{"type":"session_started","sessionId":"sim-session"}},{"misbehave":"garbage_stdout"},{"emit":{"type":"run_completed","summary":"continued"}}]}

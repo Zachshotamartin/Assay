@@ -1,0 +1,16 @@
+format_version: "1.0"
+id: reference-task
+title: Verify the deterministic reference workspace
+tags: [reference, simulated]
+fixture:
+  path: repo
+prompt: Inspect the synthetic fixture and finish deterministically.
+toolset:
+  catalog: simulated/1
+sandbox:
+  image: synthetic.invalid/assay-reference@sha256:0000000000000000000000000000000000000000000000000000000000000000
+  network: none
+  timeout_ms: 10000
+assertions:
+  - type: file_exists
+    path: README.md

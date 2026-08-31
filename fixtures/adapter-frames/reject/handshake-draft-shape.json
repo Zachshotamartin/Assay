@@ -1,0 +1,8 @@
+{
+  "type": "handshake",
+  "seq": 1,
+  "protocol": "assay-adapter/1.0",
+  "adapter": { "id": "draft", "version": "1.0.0", "tier": "full" },
+  "agent": { "name": "old-draft", "version": "1.0.0" },
+  "tools": []
+}

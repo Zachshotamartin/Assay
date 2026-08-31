@@ -8,9 +8,11 @@ where the ecosystem moves fast.
 
 Last revised: 2026-08-30.
 
-> Assay is under implementation. Gate R0 is accepted with repository,
-> toolchain, CI, and GitHub governance evidence. Gates R1 through R10 remain
-> planned. No product gate beyond the repository substrate is accepted.
+> Assay is under implementation. Gates R0 and R1 are accepted with repository
+> governance, task-format, deterministic runner, assertion, store-core, and
+> cross-platform CI evidence. Gates R2 through R10 remain planned. No sandbox,
+> real-provider, trajectory, budget, statistical, judge, Action, viewer, or
+> packaged-release gate is accepted.
 
 ## 1. Why this document exists
 
@@ -30,10 +32,11 @@ This document therefore does three things:
 - states Assay's narrow defensible claim and shows, tool by tool, which
   pieces of that claim each neighbor already has.
 
-Every Assay capability mentioned below is `planned`. Comparing a plan against
-shipped products is inherently asymmetric; the honest reading of every
-comparison in this file is "what Assay intends to do differently", never
-"what Assay does better today", because today Assay does nothing.
+No Assay capability mentioned below is accepted. R0 and R1 have branch-local
+code and local evidence only; comparing that in-progress work against shipped
+products remains inherently asymmetric. The honest reading of every comparison
+in this file is "what Assay intends to do differently", never "what Assay does
+better today."
 
 ## 2. The neighbors
 

@@ -9,9 +9,11 @@ stochastic comparison as a statistics problem, refusing to call a difference a
 regression without a significance test, confidence intervals, and stated
 power.
 
-> Assay is under implementation. Gate R0 is accepted with repository,
-> toolchain, CI, and GitHub governance evidence. Gates R1 through R10 remain
-> planned. No product gate beyond the repository substrate is accepted.
+> Assay is under implementation. Gates R0 and R1 are accepted with repository
+> governance, task-format, deterministic runner, assertion, store-core, and
+> cross-platform CI evidence. Gates R2 through R10 remain planned. No sandbox,
+> real-provider, trajectory, budget, statistical, judge, Action, viewer, or
+> packaged-release gate is accepted.
 
 The root [README](../README.md) is the quick orientation and current
 implementation snapshot. It states the honest status, the planned command
@@ -90,10 +92,12 @@ Read these documents first and in this order:
     Nothing in that register may be implemented ahead of its trigger.
 
 14. [Decision records](decisions/) contain the accepted ADRs, ADR-0001
-    through ADR-0011, which fix the toolchain, name and scope boundary,
+    through ADR-0015, which fix the toolchain, name and scope boundary,
     task format, sandbox technology, adapter contract, statistical method,
     judge policy, trace storage, cost accounting, redaction, and viewer
-    stack. Reversals become new ADRs.
+    stack, deterministic hashing of fractional task values, ownership of
+    runner orchestration, the reconciled pre-publication adapter v1 wire
+    contract, and staged exit-code reachability. Reversals become new ADRs.
 
 ## Conflict and Status Rules
 
@@ -123,8 +127,8 @@ means implemented on mainline and backed by its named automated gate. **In
 progress** means present on a branch and never a release claim. **Planned**
 means specified, not implemented. **Deferred** means outside the named phase
 and forbidden as completion evidence. A package, type, stub, or happy-path
-unit test is never completion. Today R0 is accepted and every later gate is
-planned.
+unit test is never completion. Today R0 and R1 are accepted, and R2 through
+R10 are planned.
 
 ## Requirements and Evidence
 

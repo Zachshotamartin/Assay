@@ -8,6 +8,14 @@
   "include": ["src/**/*.ts"],
   "exclude": ["src/**/*.test.ts"],
   "references": [
-    { "path": "../../packages/contracts" }
+    { "path": "../../packages/contracts" },
+    { "path": "../../packages/config" },
+    { "path": "../../packages/task-format" },
+    { "path": "../../packages/assertions" },
+    { "path": "../../packages/adapter-core" },
+    { "path": "../../packages/adapter-simulated" },
+    { "path": "../../packages/redaction" },
+    { "path": "../../packages/run-store" },
+    { "path": "../../packages/runner" }
   ]
 }

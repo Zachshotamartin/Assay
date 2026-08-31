@@ -1,0 +1,117 @@
+{
+  "fixtureSchema": "assay-fixture-directory/1",
+  "generatorVersion": "r1-fixtures/1",
+  "fixtureId": "r1-contract-event-corpus",
+  "fixtureKind": "contract-event",
+  "manifestRoot": "fixtures/contract-events",
+  "contentHash": "sha256:f3daf49dc1166f3a11d72e0c4776036769e1ebdad22219299e7531bad23cbc28",
+  "manifest": [
+    {
+      "path": "events/adapter-handshake.json",
+      "sha256": "c0b743b91709aec1055148f1f59afeb6ce79bd5af3d0e3b3e9b255453ec747e5"
+    },
+    {
+      "path": "events/assertion-evaluated.json",
+      "sha256": "d76259848d98f5f35c7bdaf9b6501ab82ca7dfe30345ee66ba50e4d6e0ca30fc"
+    },
+    {
+      "path": "events/budget-evaluated.json",
+      "sha256": "176960f8b10ecddfa80eb08a2911bb9386d97c64d4f109c74b85e9fb93f2e1aa"
+    },
+    {
+      "path": "events/comparison-completed.json",
+      "sha256": "5c3aeaf6ed287867f3710caff2a19d9b086bf5a06f497edd6369bfdf4830feba"
+    },
+    {
+      "path": "events/fixture-materialized.json",
+      "sha256": "eb95b2041612cd88e0436bda75000b675b5511dd9e23fc58b54387ac0936463c"
+    },
+    {
+      "path": "events/judge-vote-recorded.json",
+      "sha256": "a195dae5923c39a0b6fb33aa09be79b8c53cb0828457d8425fabafd7fe517a77"
+    },
+    {
+      "path": "events/model-request-started.json",
+      "sha256": "94dd6e0900bea93859043601270b2ba986692f023211f7ff29dabe5eb4c62fa1"
+    },
+    {
+      "path": "events/model-response-recorded.json",
+      "sha256": "a91327e1eaf139e69597bcbf1cd1eac0fd2a98e9ea3cd6af4226326561fb975c"
+    },
+    {
+      "path": "events/run-cancelled.json",
+      "sha256": "b5d0979bd0ec1e8693ae4ac2f5318e3628bc4e8d4884de1f9a40ce2202c483d2"
+    },
+    {
+      "path": "events/run-failed.json",
+      "sha256": "744e299353b93fb528210a91275d9fcfa5fcb234f0b7ebcaf192ca1628344da1"
+    },
+    {
+      "path": "events/run-planned.json",
+      "sha256": "a93d4b12ab44b7b646a0a9e75ed4ab7cb94a225ad4b8103d92004ba82463d21a"
+    },
+    {
+      "path": "events/sandbox-destroyed.json",
+      "sha256": "a7fce7a5bfe3badd38655e23e9e6a030baccfc11a3a64c520fb0181d7e827d97"
+    },
+    {
+      "path": "events/sandbox-started.json",
+      "sha256": "fb0a88b26bc831c9bf7dd57cfdcdd707db961ab9a50585c6722e8ff89cd771a2"
+    },
+    {
+      "path": "events/suite-completed.json",
+      "sha256": "51e4f2bba77a4e3399e261424dcffa445477e3d9fce21fdc45512fa5a567a433"
+    },
+    {
+      "path": "events/task-run-completed.json",
+      "sha256": "d1c26ae574a608397869897de6719cdd7ef82cb5621e8ffd6e8eb685a8cdbb7e"
+    },
+    {
+      "path": "events/tool-call-recorded.json",
+      "sha256": "cfd13de97f9f14309a521bfdecf86891e64e7b7358c5f10ad98b1c5c93783133"
+    },
+    {
+      "path": "events/trajectory-scored.json",
+      "sha256": "dbf9be6159e780716243c6f90ccfa07162b9076005f4638ceddda56ed4d97fc0"
+    },
+    {
+      "path": "events/usage-reconciled.json",
+      "sha256": "6eb09476d7aed1f5c21ac63dca3184d16006839971958fd2ab52227c420e514c"
+    },
+    {
+      "path": "events/usage-unreconciled.json",
+      "sha256": "aa7cab4a1c3a7f6f91b6f1cff138808093dc69c7f03b88d0ef3f61a81a3d644a"
+    },
+    {
+      "path": "events/workspace-snapshot-taken.json",
+      "sha256": "45798135c45af47d90f89fd8240d98eb94a06656e3dac8e67dff32c7f90d4249"
+    }
+  ],
+  "suites": [],
+  "consumers": [
+    "packages/contracts/src/events.test.ts"
+  ],
+  "assurances": {
+    "synthetic": true,
+    "containsRealCredentials": false,
+    "containsRealUserRepositories": false,
+    "containsPrivateTranscripts": false,
+    "registeredSyntheticCanaries": []
+  },
+  "provenance": {
+    "origin": "repository-authored-synthetic",
+    "source": "Assay R1 planning and test corpus",
+    "license": "MIT",
+    "capturedFromExternalSystem": false
+  },
+  "regeneration": {
+    "mode": "hand-authored",
+    "command": "npm run fixtures:manifest -- fixtures/contract-events",
+    "verificationCommand": "npm run check:fixtures",
+    "instructions": [
+      "Edit only synthetic fixture source files and preserve the documented schema.",
+      "Refresh this manifest with npm run fixtures:manifest -- fixtures/contract-events.",
+      "Review every content and provenance change, then run npm run check:fixtures."
+    ]
+  }
+}

@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 import { parse } from "yaml";
 
 const workflowPath = fileURLToPath(new URL("../.github/workflows/ci.yml", import.meta.url));
+const repositoryRoot = fileURLToPath(new URL("../", import.meta.url));
 
 interface WorkflowStep {
   readonly uses?: string;
@@ -13,7 +14,11 @@ interface WorkflowStep {
 
 interface WorkflowJob {
   readonly name?: string;
-  readonly "runs-on"?: string;
+  readonly "runs-on"?: string | Readonly<Record<string, unknown>>;
+  readonly env?: Readonly<Record<string, unknown>>;
+  readonly strategy?: {
+    readonly matrix?: Readonly<Record<string, unknown>>;
+  };
   readonly steps?: readonly WorkflowStep[];
 }
 
@@ -74,5 +79,95 @@ describe("R0 CI workflow contract", () => {
         value.jobs?.[name]?.steps?.some(({ run }) => run === "npm run verify")
       ).toBe(true);
     }
+  });
+});
+
+describe("R1 CI workflow contract", () => {
+  it("exposes the exact required e2e context while retaining macOS evidence [NFR-DET-004]", async () => {
+    const value = await workflow();
+
+    expect(value.jobs?.["e2e-simulated"]?.name).toBe("e2e-simulated");
+    expect(value.jobs?.["e2e-simulated"]?.["runs-on"]).toBe("ubuntu-24.04");
+    expect(value.jobs?.["e2e-simulated"]?.strategy).toBeUndefined();
+    expect(value.jobs?.["e2e-simulated-macos"]?.name).toBe(
+      "e2e-simulated-macos"
+    );
+    expect(value.jobs?.["e2e-simulated-macos"]?.["runs-on"]).toBe("macos-14");
+    expect(
+      value.jobs?.["e2e-simulated-macos"]?.steps?.some(
+        ({ run }) => run === "npm run test:reproducibility"
+      )
+    ).toBe(true);
+  });
+
+  it("adds named store-core and cross-platform e2e-simulated required checks", async () => {
+    const value = await workflow();
+
+    expect(value.jobs?.["store-core"]?.name).toBe("store-core");
+    expect(value.jobs?.["store-core"]?.["runs-on"]).toBe("ubuntu-24.04");
+    expect(value.jobs?.["e2e-simulated"]?.name).toBe("e2e-simulated");
+    expect(value.jobs?.["e2e-simulated"]?.["runs-on"]).toBe("ubuntu-24.04");
+    expect(value.jobs?.["e2e-simulated-macos"]?.name).toBe(
+      "e2e-simulated-macos"
+    );
+    expect(value.jobs?.["e2e-simulated-macos"]?.["runs-on"]).toBe("macos-14");
+  });
+
+  it("enforces the golden semantic-review policy in CI", async () => {
+    const value = await workflow();
+    const steps = value.jobs?.["e2e-simulated"]?.steps ?? [];
+
+    expect(steps.some(({ run }) => run === "npm run check:goldens")).toBe(true);
+    expect(Object.keys(value.jobs?.["e2e-simulated"]?.env ?? {}).some((name) =>
+      name.startsWith("ASSAY_")
+    )).toBe(false);
+    expect(value.jobs?.["e2e-simulated"]?.env?.["GOLDEN_POLICY_REVIEW_TEXT"])
+      .toContain("github.event.head_commit.message");
+  });
+
+  it("builds packaged artifacts once before e2e and never races a nested clean build [NFR-MAINT-006]", async () => {
+    const packageJson = JSON.parse(
+      await readFile(`${repositoryRoot}package.json`, "utf8")
+    ) as { readonly scripts?: Readonly<Record<string, string>> };
+    const subprocessTest = await readFile(
+      `${repositoryRoot}tests/e2e/subprocess.test.ts`,
+      "utf8"
+    );
+
+    expect(subprocessTest).not.toMatch(/npm["'], \["run", "build"\]/u);
+    expect(packageJson.scripts?.["test:unit"]).toContain("--exclude 'tests/e2e/**'");
+    expect(packageJson.scripts?.["verify"]).toBe(
+      "npm run typecheck && npm run lint && npm run build && npm test"
+    );
+
+    const value = await workflow();
+    const commands = value.jobs?.["e2e-simulated"]?.steps
+      ?.map(({ run }) => run)
+      .filter((run): run is string => run !== undefined) ?? [];
+    expect(commands.indexOf("npm run build")).toBeGreaterThanOrEqual(0);
+    expect(commands.indexOf("npm run test:e2e:simulated"))
+      .toBeGreaterThan(commands.indexOf("npm run build"));
+  });
+
+  it("runs the exact clean-clone R1 acceptance commands after build with no provider secrets", async () => {
+    const value = await workflow();
+    const commands = value.jobs?.["e2e-simulated"]?.steps
+      ?.map(({ run }) => run)
+      .filter((run): run is string => run !== undefined) ?? [];
+    const buildIndex = commands.indexOf("npm run build");
+    const fixtureCheck = commands.indexOf("npm run check:fixtures");
+    const validate = commands.indexOf(
+      "node apps/cli/dist/bin.js validate fixtures/suites/reference"
+    );
+    const run = commands.indexOf(
+      "node apps/cli/dist/bin.js run fixtures/suites/reference.suite.yaml " +
+      "--variant baseline --adapter simulated -n 10 --seed 42"
+    );
+
+    expect(buildIndex).toBeGreaterThanOrEqual(0);
+    expect(fixtureCheck).toBeGreaterThan(buildIndex);
+    expect(validate).toBeGreaterThan(buildIndex);
+    expect(run).toBeGreaterThan(validate);
+    expect(await readFile(workflowPath, "utf8")).not.toMatch(/secrets\s*\./u);
   });
 });

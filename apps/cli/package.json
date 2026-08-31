@@ -22,5 +22,16 @@
   "engines": {
     "node": ">=22.0.0 <23.0.0",
     "npm": ">=10.0.0 <11.0.0"
+  },
+  "dependencies": {
+    "@assay/adapter-core": "0.0.0",
+    "@assay/adapter-simulated": "0.0.0",
+    "@assay/assertions": "0.0.0",
+    "@assay/config": "0.0.0",
+    "@assay/contracts": "0.0.0",
+    "@assay/redaction": "0.0.0",
+    "@assay/run-store": "0.0.0",
+    "@assay/runner": "0.0.0",
+    "@assay/task-format": "0.0.0"
   }
 }

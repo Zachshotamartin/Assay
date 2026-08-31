@@ -1,0 +1,1 @@
+{"scenario_version":1,"steps":[{"emit":{"type":"session_started","sessionId":"sim-session"}},{"write_file":{"path":"nested/kept.txt","contents":"deterministic\n"}},{"write_file":{"path":"deleted.txt","contents":"temporary"}},{"delete_file":{"path":"deleted.txt"}},{"emit":{"type":"run_completed","summary":"Applied filesystem directives."}}]}

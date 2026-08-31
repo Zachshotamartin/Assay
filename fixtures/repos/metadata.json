@@ -1,0 +1,174 @@
+{
+  "fixtureSchema": "assay-fixture-directory/1",
+  "generatorVersion": "r1-fixtures/1",
+  "fixtureId": "r1-repository-test-corpus",
+  "fixtureKind": "repository",
+  "manifestRoot": "fixtures/repos",
+  "contentHash": "sha256:51d9ef7947ffaef57b1200948132498bf6589a3e10b565db94f49f72ee0c1a89",
+  "manifest": [
+    {
+      "path": "architecture-checker-worker-import/architecture.config.json",
+      "sha256": "3a19bbc89473d31be2afb79eab632e6861228b8f3502bdb20e47c447503e4a0b"
+    },
+    {
+      "path": "architecture-checker-worker-import/packages/assertions/package.json",
+      "sha256": "fc7209ef92a1a838c903b8927153ec77e9aa1b7e5ae3949d02dfbb6d1d22289c"
+    },
+    {
+      "path": "architecture-checker-worker-import/packages/assertions/src/checker-worker-entry.ts",
+      "sha256": "f5247b24e9b1a85b45c967c7fbc3d2104ed037d034eea9938f7d624561391659"
+    },
+    {
+      "path": "architecture-illegal-edge/architecture.config.json",
+      "sha256": "230794307963ca7bf196c8f03180144aad0ed25170e06018747a32486a8ff5e3"
+    },
+    {
+      "path": "architecture-illegal-edge/package.json",
+      "sha256": "71f2ff3768e8759f1a97874cf80589843ec9c889ca9327a6d2778f3b7b72694a"
+    },
+    {
+      "path": "architecture-illegal-edge/packages/alpha/package.json",
+      "sha256": "aa5098c110ad1d2ffc9b22d26e9a392b306bc4d00d1ed307b89c42afecfb9b8c"
+    },
+    {
+      "path": "architecture-illegal-edge/packages/alpha/src/index.ts",
+      "sha256": "4edb45ba2be31c3cc774fb4bf595bdcf7b17aad152c72a7ec1002a6c8866410e"
+    },
+    {
+      "path": "architecture-illegal-edge/packages/beta/package.json",
+      "sha256": "e5ea2cd770d6ff820cb07cd842c7b02e04c605415b5631ad8c9ee85faa8f4b03"
+    },
+    {
+      "path": "architecture-illegal-edge/packages/beta/src/index.ts",
+      "sha256": "00fbaec0f27cf6037ed8001f2340a515175b1c48686ee94d6acd2513254a05b5"
+    },
+    {
+      "path": "architecture-imports-app/apps/cli/package.json",
+      "sha256": "f9f0b32b1b705c52a7c5283a37764ea73f364f6a33d4e9d7b049895108d4e709"
+    },
+    {
+      "path": "architecture-imports-app/apps/cli/src/index.ts",
+      "sha256": "91619566de23f79917a4a4874d484c13b1d572f2189279d488c177ff99a653b1"
+    },
+    {
+      "path": "architecture-imports-app/architecture.config.json",
+      "sha256": "d8438827bac265680c7d38e3ab4082ee21815ed7134257e5a3259372c068a675"
+    },
+    {
+      "path": "architecture-imports-app/package.json",
+      "sha256": "f367aab8ec05d9acd00699fa3cd9f4cab12e7515cab257f8083257206f0f03b5"
+    },
+    {
+      "path": "architecture-imports-app/packages/alpha/package.json",
+      "sha256": "844f91af2c792f46e0dd192e70683bdd9a316adc6dda873be9f33a9e14e05782"
+    },
+    {
+      "path": "architecture-imports-app/packages/alpha/src/index.ts",
+      "sha256": "a66b7add3c2b72cacf1a546806ca8e3a1e307a7e55e17e7b7edb70c57de1b962"
+    },
+    {
+      "path": "architecture-nondeterministic-source/architecture.config.json",
+      "sha256": "d18f6713bb9648364e0a20c065af6de1288ccc439aa6e59d49a17d4c752beab9"
+    },
+    {
+      "path": "architecture-nondeterministic-source/package.json",
+      "sha256": "71f2ff3768e8759f1a97874cf80589843ec9c889ca9327a6d2778f3b7b72694a"
+    },
+    {
+      "path": "architecture-nondeterministic-source/packages/alpha/package.json",
+      "sha256": "844f91af2c792f46e0dd192e70683bdd9a316adc6dda873be9f33a9e14e05782"
+    },
+    {
+      "path": "architecture-nondeterministic-source/packages/alpha/src/index.ts",
+      "sha256": "8f25c5fbf062cf19743f71fb21916cbd9de897f03a2783e43043ca43eb301580"
+    },
+    {
+      "path": "docs-forbidden-install/README.md",
+      "sha256": "f55126f3346dcf327172044a035d28779c85eedb21fe761c77a54af1f68b35a4"
+    },
+    {
+      "path": "docs-forbidden-install/docs/BUILD_PLAN.md",
+      "sha256": "7450c39f134b63f7ecb4fa478f193b6caa667cf7d78d6a89ca04ea93c5d31724"
+    },
+    {
+      "path": "docs-forbidden-install/docs/status.yaml",
+      "sha256": "712f7321d35eff51dc3c67b66ce5700be91c6502ae47874549e86f4d919467c7"
+    },
+    {
+      "path": "docs-missing-claim/README.md",
+      "sha256": "bf12ed323b03ad212a8e52699e51a5df56290e59743ecb119e0beeb58710ffa0"
+    },
+    {
+      "path": "docs-missing-claim/docs/BUILD_PLAN.md",
+      "sha256": "08e50049956580bf72c35933d0a06fe87e22574350a1d0153365eeaec906d311"
+    },
+    {
+      "path": "docs-missing-claim/docs/status.yaml",
+      "sha256": "712f7321d35eff51dc3c67b66ce5700be91c6502ae47874549e86f4d919467c7"
+    },
+    {
+      "path": "docs-r1-valid/README.md",
+      "sha256": "d07bf9887fa24cd75829876962f9204926914ec7e1040ecea8a643972e4a8081"
+    },
+    {
+      "path": "docs-r1-valid/docs/BUILD_PLAN.md",
+      "sha256": "e753bd7b28911e8b01d34af44a523d8153ec2e32630ed7d03717464f89d45be2"
+    },
+    {
+      "path": "docs-r1-valid/docs/status.yaml",
+      "sha256": "2519e83f0308af19d52afa1c9fc9469a7adc3a0962a679a11deda5dc18a98faa"
+    },
+    {
+      "path": "docs-status-drift/README.md",
+      "sha256": "ee8e2ba6b165f9aa3239d4a353603d00aae8265ffda14da0aadf12d146bab738"
+    },
+    {
+      "path": "docs-status-drift/docs/BUILD_PLAN.md",
+      "sha256": "7450c39f134b63f7ecb4fa478f193b6caa667cf7d78d6a89ca04ea93c5d31724"
+    },
+    {
+      "path": "docs-status-drift/docs/status.yaml",
+      "sha256": "712f7321d35eff51dc3c67b66ce5700be91c6502ae47874549e86f4d919467c7"
+    },
+    {
+      "path": "docs-valid/README.md",
+      "sha256": "bf12ed323b03ad212a8e52699e51a5df56290e59743ecb119e0beeb58710ffa0"
+    },
+    {
+      "path": "docs-valid/docs/BUILD_PLAN.md",
+      "sha256": "7450c39f134b63f7ecb4fa478f193b6caa667cf7d78d6a89ca04ea93c5d31724"
+    },
+    {
+      "path": "docs-valid/docs/status.yaml",
+      "sha256": "712f7321d35eff51dc3c67b66ce5700be91c6502ae47874549e86f4d919467c7"
+    }
+  ],
+  "suites": [],
+  "consumers": [
+    "scripts/check-architecture.test.ts",
+    "scripts/check-docs.test.ts"
+  ],
+  "assurances": {
+    "synthetic": true,
+    "containsRealCredentials": false,
+    "containsRealUserRepositories": false,
+    "containsPrivateTranscripts": false,
+    "registeredSyntheticCanaries": []
+  },
+  "provenance": {
+    "origin": "repository-authored-synthetic",
+    "source": "Assay R1 planning and test corpus",
+    "license": "MIT",
+    "capturedFromExternalSystem": false
+  },
+  "regeneration": {
+    "mode": "hand-authored",
+    "command": "npm run fixtures:manifest -- fixtures/repos",
+    "verificationCommand": "npm run check:fixtures",
+    "instructions": [
+      "Edit only synthetic fixture source files and preserve the documented schema.",
+      "Refresh this manifest with npm run fixtures:manifest -- fixtures/repos.",
+      "Review every content and provenance change, then run npm run check:fixtures."
+    ]
+  }
+}

@@ -1,0 +1,90 @@
+format_version: "1.0"
+id: every-field
+title: Every task field
+description: Exercises every published task field.
+tags: [bugfix, typescript]
+fixture:
+  archive:
+    ref: fixtures/archive.tar
+    sha256: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+  git_init: true
+prompt:
+  file: ./prompt.md
+toolset:
+  catalog: simulated/1
+  allow: [read_file, write_file, run_command]
+  deny: [web_fetch]
+sandbox:
+  image: example.invalid/fixture@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+  network: allowlist
+  hosts: [api.example.invalid]
+  cpu: 1.5
+  memory_mb: 2048
+  pids: 128
+  disk_mb: 4096
+  timeout_ms: 300000
+  env:
+    CI: "true"
+  workdir: /workspace
+assertions:
+  - type: exit_code
+    name: clean-exit
+    equals: 0
+  - type: tests_pass
+    command: [npm, test]
+    cwd: .
+    timeout_ms: 120000
+  - type: file_exists
+    path: dist/result.json
+    kind: file
+  - type: file_absent
+    path: debug.log
+  - type: file_contains
+    path: src/index.ts
+    literal: fixed
+    min_count: 1
+    max_bytes: 1048576
+  - type: json_schema
+    path: dist/result.json
+    schema: ./result.schema.json
+  - type: diff_matches
+    expected: ./expected.patch
+    ignore_whitespace: trailing
+    paths: [src/index.ts]
+  - type: command_output
+    command: [node, dist/cli.js]
+    stream: both
+    contains: complete
+    cwd: .
+    timeout_ms: 60000
+  - type: trajectory
+    metric: redundant_call_count
+    op: "<="
+    value: 2
+  - type: checker
+    module: ./custom.checker.ts
+    timeout_ms: 5000
+    memory_mb: 128
+  - type: judge
+    rubric: ./quality.rubric.yaml
+    threshold: 0.75
+    k: 3
+    advisory: true
+budgets:
+  tokens: { limit: 60000, aggregate: median, scope: task }
+  wall_clock_ms: { limit: 120000, aggregate: p95, scope: task }
+  tool_calls: { limit: 40, aggregate: median, scope: task }
+  dollars: { limit: 0.5, aggregate: median, scope: task }
+run_policy:
+  n: 10
+  seed: 42
+  seed_strategy: derived
+judge:
+  rubric: ./quality.rubric.yaml
+  model: { family_not: subject }
+  allow_same_family_judge: false
+trajectory_expectations:
+  expected_tools: [read_file, write_file, run_command]
+  ordering:
+    - { first: read_file, then: write_file }
+  read_before_write: true

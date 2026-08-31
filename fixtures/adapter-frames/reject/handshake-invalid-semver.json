@@ -1,0 +1,14 @@
+{
+  "type": "handshake",
+  "seq": 1,
+  "contract": "assay-adapter/1",
+  "adapter": { "id": "bad-version", "version": "1.0.0-01" },
+  "tier": "full",
+  "model": { "provider": "synthetic", "model": "scripted-v1", "family": "synthetic" },
+  "tool_catalog": [],
+  "capabilities": {
+    "usage_reporting": true,
+    "cost_reporting": false,
+    "streaming_text": true
+  }
+}

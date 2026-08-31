@@ -95,6 +95,8 @@ describe("Assay error taxonomy", () => {
     expect(exitCodeForCategory("cancelled")).toBe(6);
     expect(aggregateExitCode([1, 2, 3, 4, 5])).toBe(5);
     expect(aggregateExitCode([5, 6])).toBe(6);
+    expect(aggregateExitCode([6, 3, 2, 1])).toBe(6);
+    expect(aggregateExitCode([3, 2, 1])).toBe(3);
     expect(aggregateExitCode([])).toBe(0);
   });
 
@@ -129,4 +131,3 @@ describe("Assay error taxonomy", () => {
     expect(isFailClosedCategory("budget_exceeded")).toBe(false);
   });
 });
-

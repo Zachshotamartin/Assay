@@ -5,7 +5,9 @@
       { "context": "typecheck", "app_id": 15368 },
       { "context": "lint-docs", "app_id": 15368 },
       { "context": "unit-property", "app_id": 15368 },
-      { "context": "arch-boundaries", "app_id": 15368 }
+      { "context": "arch-boundaries", "app_id": 15368 },
+      { "context": "e2e-simulated", "app_id": 15368 },
+      { "context": "store-core", "app_id": 15368 }
     ]
   },
   "enforce_admins": true,

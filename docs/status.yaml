@@ -1,5 +1,5 @@
 current_claim: >-
-  Assay is under implementation. Gate R0 is accepted with repository, toolchain, CI, and GitHub governance evidence. Gates R1 through R10 remain planned. No product gate beyond the repository substrate is accepted.
+  Assay is under implementation. Gates R0 and R1 are accepted with repository governance, task-format, deterministic runner, assertion, store-core, and cross-platform CI evidence. Gates R2 through R10 remain planned. No sandbox, real-provider, trajectory, budget, statistical, judge, Action, viewer, or packaged-release gate is accepted.
 claim_documents:
   - README.md
   - docs/README.md
@@ -20,7 +20,7 @@ planned_install_sections:
     - 14.4 Rollback
 gates:
   R0: accepted
-  R1: planned
+  R1: accepted
   R2: planned
   R3: planned
   R4: planned

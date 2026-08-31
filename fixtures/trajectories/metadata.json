@@ -1,0 +1,135 @@
+{
+  "fixtureSchema": "assay-fixture-directory/1",
+  "generatorVersion": "r1-fixtures/1",
+  "fixtureId": "r1-simulated-trajectory-corpus",
+  "fixtureKind": "trajectory",
+  "manifestRoot": "fixtures/trajectories",
+  "contentHash": "sha256:ca96296e2c440ab005194d89aff8e0b2c97a4d339c11f48f1d4d97647d255370",
+  "manifest": [
+    {
+      "path": "budget-token-ramp.json",
+      "sha256": "6c46acf728a1b2772ffe669c7abbc556a770c1a3f081086f29671b4ed3f11366"
+    },
+    {
+      "path": "crash-at-step.json",
+      "sha256": "e21afa3760f3e33fa2e39455731b52f74e54f11a1683d34f5c415fed749806ba"
+    },
+    {
+      "path": "early-exit.json",
+      "sha256": "873f6b69e78453e8b3333ed513510661e5908bdf4c1fcc8a7ebcd0774b64c41c"
+    },
+    {
+      "path": "exit-zero-without-terminal.json",
+      "sha256": "b307bb0216b61a7ea4ac8311c31f878ed2cbc322cfa2d8a1b26aa09f44882bb7"
+    },
+    {
+      "path": "filesystem.json",
+      "sha256": "7d2b45f4206205bc3e86d9ba04e9b7e8e4ec62bf9c82308a0a4785b3b695fc5c"
+    },
+    {
+      "path": "frame-flood.json",
+      "sha256": "7781819e46a477a08a1a4bbe89914683801e6ab55a8f3afeed59dd4ac3332504"
+    },
+    {
+      "path": "garbage-stdout.json",
+      "sha256": "ee0981da256812b91c9424527fce1a78e19a649eb2dbd0d0f706af04df74a678"
+    },
+    {
+      "path": "hang-until-timeout.json",
+      "sha256": "37de257bff3dec7e63caadc40e0f1840256dc4849e5cd14c5f0589236afe039f"
+    },
+    {
+      "path": "happy-multi-turn.json",
+      "sha256": "7ff4bbb6fb74eef12360c5bbd2798cfbc75225dca8a485cb69bbed3505f14e87"
+    },
+    {
+      "path": "identical-call-loop.json",
+      "sha256": "412fe21e9888c9f7dbce967d244dc57d3d68f6915cb1a5651592fb5c6e0fdb1f"
+    },
+    {
+      "path": "ignore-sigterm.json",
+      "sha256": "6cf646a3953d0f7ad4bcb63aa1c068681dbeed99b08db4f979b6ab02121267bc"
+    },
+    {
+      "path": "invalid-utf8.json",
+      "sha256": "580755c287350790a944ae85b4f354d9201ab4388a8837f3ec8843817cab5e58"
+    },
+    {
+      "path": "malformed-json.json",
+      "sha256": "d0dc91f3a6d762572bfcb63a15ca556e98d78f04f477597377a4387fa0d701cb"
+    },
+    {
+      "path": "missing-tool-result.json",
+      "sha256": "5d5633310593edccb1c863fdb07c04eed55e9350adfb21f6d78c5dec939da8fa"
+    },
+    {
+      "path": "oversized-frame.json",
+      "sha256": "bc76c75baa395455c2d4ffeb4212545bd78779bbf793db3852b1768cdfe0ccdf"
+    },
+    {
+      "path": "plain-text.json",
+      "sha256": "7a8aad48c0adb69e2e6edb762b5d6127e390692bf7dcaa386573ede7c4ed3239"
+    },
+    {
+      "path": "post-terminal-frame.json",
+      "sha256": "427fc3e34f41990e5ab2b628037f7651d0a6429eb82bd7c7738e8825b7fbec76"
+    },
+    {
+      "path": "run-failed-agent-crashed.json",
+      "sha256": "f808fa93b670b43f4b9eefb5237b5d87d579f3ea42db4c3b2a2db7fadf508d15"
+    },
+    {
+      "path": "run-failed-agent-gave-up.json",
+      "sha256": "5522746be44cc609f145a546dc1413748908577f8fa95182641038978a2f21e9"
+    },
+    {
+      "path": "run-failed-internal.json",
+      "sha256": "b178100cb9607d86c0f5d0d72ae23765f863754372898522a9b0415e4fc9d30d"
+    },
+    {
+      "path": "run-failed-provider-error.json",
+      "sha256": "d65457f5bbad222d02872bb2d3d4dfa69d8a140e35414d794852dcbf81f37c49"
+    },
+    {
+      "path": "sequence-gap.json",
+      "sha256": "b9f2e3c9cabb6257a53c24137a3ed9aa0bac504fd00131d5c64fd57d89d72886"
+    },
+    {
+      "path": "tool-error-recovery.json",
+      "sha256": "2d36a2f39378f3ea5c65f365e2bec37688fb476e1a22ea6dcaa88b57d9e71bee"
+    },
+    {
+      "path": "usage-arithmetic-error.json",
+      "sha256": "89193191137b3217e051e937fc92191142a3061cb8e0510dd93221ae423ab8a9"
+    }
+  ],
+  "suites": [],
+  "consumers": [
+    "apps/cli/src/run.e2e.test.ts",
+    "packages/adapter-simulated/src/scenario.test.ts",
+    "packages/adapter-simulated/src/subprocess.test.ts"
+  ],
+  "assurances": {
+    "synthetic": true,
+    "containsRealCredentials": false,
+    "containsRealUserRepositories": false,
+    "containsPrivateTranscripts": false,
+    "registeredSyntheticCanaries": []
+  },
+  "provenance": {
+    "origin": "repository-authored-synthetic",
+    "source": "Assay R1 planning and test corpus",
+    "license": "MIT",
+    "capturedFromExternalSystem": false
+  },
+  "regeneration": {
+    "mode": "hand-authored",
+    "command": "npm run fixtures:manifest -- fixtures/trajectories",
+    "verificationCommand": "npm run check:fixtures",
+    "instructions": [
+      "Edit only synthetic fixture source files and preserve the documented schema.",
+      "Refresh this manifest with npm run fixtures:manifest -- fixtures/trajectories.",
+      "Review every content and provenance change, then run npm run check:fixtures."
+    ]
+  }
+}

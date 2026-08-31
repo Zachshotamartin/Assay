@@ -1,6 +1,24 @@
 {
   "workspaces": {
-    "apps/cli": ["packages/contracts"],
-    "packages/contracts": []
+    "apps/cli": [
+      "packages/adapter-core",
+      "packages/adapter-simulated",
+      "packages/assertions",
+      "packages/config",
+      "packages/contracts",
+      "packages/redaction",
+      "packages/run-store",
+      "packages/runner",
+      "packages/task-format"
+    ],
+    "packages/adapter-core": ["packages/contracts"],
+    "packages/adapter-simulated": ["packages/adapter-core"],
+    "packages/assertions": ["packages/contracts"],
+    "packages/config": ["packages/contracts"],
+    "packages/contracts": [],
+    "packages/redaction": ["packages/contracts"],
+    "packages/run-store": ["packages/contracts"],
+    "packages/runner": ["packages/contracts"],
+    "packages/task-format": ["packages/contracts"]
   }
 }

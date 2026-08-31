@@ -1,0 +1,9 @@
+{
+  "type": "tool_call",
+  "seq": 5,
+  "ts": "2026-01-02T03:04:05.006Z",
+  "call_id": "call-1",
+  "request_id": "request-1",
+  "tool": "read_file",
+  "args": { "path": "src/index.ts" }
+}

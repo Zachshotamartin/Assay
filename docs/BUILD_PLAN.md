@@ -55,9 +55,9 @@ Every deliverable has one of four statuses:
 A package, type, command stub, or happy-path unit test is not completion. A
 gate is accepted only when its user flow, failure behavior, persistence
 implications, isolation behavior, documentation, installation impact, and
-acceptance evidence all pass together. At the time of this revision, every
-gate in this plan is **planned**. No section below may be read as describing
-running software.
+acceptance evidence all pass together. At the time of this revision, R0 and
+R1 are **accepted** and R2 through R10 are **planned**. Only accepted-gate
+sections may be read as describing running software.
 
 ### 1.2 Product gates and release names
 
@@ -134,29 +134,35 @@ evidence may cite an unaccepted predecessor's behavior.
 
 ## 2. Current Baseline: What Is and Is Not Built
 
-### 2.1 Repository substrate is built
+### 2.1 Repository substrate and deterministic runner accepted
 
-R0 is accepted. The repository has the pinned Node/npm substrate, bootstrap
-CLI, contracts, schemas, architecture and documentation checks, governed CI,
-dependency review, and live GitHub protections recorded by R0 evidence. The
-evaluation product begins at R1 and remains unaccepted.
+R0 and R1 are accepted on main with repository governance and deterministic
+cross-platform evidence. R1 contains the task and suite formats, the
+source-built `validate` and `run` CLI paths, the deterministic simulated
+adapter, assertions, redaction, the local evidence store, fixtures, tests,
+and deterministic CI workflow definitions. It remains source-only and has no
+sandbox or real-provider support. R2 through R10 remain planned.
 
 ### 2.2 Current product claim
 
-Until R1 is accepted, the truthful claim — used verbatim wherever the
-current state is described — is:
+The truthful claim — used verbatim wherever the current state is described —
+is:
 
-> Assay is under implementation. Gate R0 is accepted with repository,
-> toolchain, CI, and GitHub governance evidence. Gates R1 through R10 remain
-> planned. No product gate beyond the repository substrate is accepted.
+> Assay is under implementation. Gates R0 and R1 are accepted with repository
+> governance, task-format, deterministic runner, assertion, store-core, and
+> cross-platform CI evidence. Gates R2 through R10 remain planned. No sandbox,
+> real-provider, trajectory, budget, statistical, judge, Action, viewer, or
+> packaged-release gate is accepted.
 
 ### 2.3 What may not be claimed
 
-Because no evaluation-product gate is accepted, the following are forbidden in any README,
-package description, demo, talk, social post, release tag, or portfolio
-bullet until the named gate is accepted:
+Because only R0 and R1 are accepted, the following remain forbidden as
+release or product-capability claims in any README, package description,
+demo, talk, social post, release tag, or portfolio bullet until the named
+gate is accepted:
 
-- that `assay` runs, validates, compares, or reports anything (R1);
+- that Assay is published or installable, or that its accepted source-built
+  `validate` and simulated `run` surface extends to real agents (R10/R3);
 - that Assay isolates or sandboxes agent execution (R2);
 - that Assay accounts for tokens, dollars, or latency (R3);
 - that Assay scores trajectories or detects agent loops (R4);
@@ -326,33 +332,12 @@ live in `packages/contracts` (identifiers, records) and `packages/
 adapter-core` (the adapter event union) and are frozen by schema fixtures
 before any consumer is written.
 
-```ts
-export type AdapterEvent =
-  | { readonly type: "handshake"; readonly contractVersion: "assay-adapter/1";
-      readonly adapterId: string; readonly adapterVersion: string;
-      readonly tier: ConformanceTier;
-      readonly toolCatalog: readonly ToolCatalogEntry[] }
-  | { readonly type: "model_request"; readonly requestId: string;
-      readonly modelId: string; readonly startedAtMs: number }
-  | { readonly type: "model_response"; readonly requestId: string;
-      readonly text: string; readonly finishReason: string;
-      readonly durationMs: number }
-  | { readonly type: "tool_call"; readonly callId: string;
-      readonly name: string; readonly argumentsJson: string;
-      readonly startedAtMs: number }
-  | { readonly type: "tool_result"; readonly callId: string;
-      readonly resultJson: string; readonly isError: boolean;
-      readonly durationMs: number }
-  | { readonly type: "usage"; readonly requestId: string;
-      readonly inputTokens: number; readonly outputTokens: number;
-      readonly reportedCostUsd?: number;
-      readonly source: "provider" | "synthetic" }
-  | { readonly type: "log"; readonly level: "info" | "warn";
-      readonly message: string }
-  | { readonly type: "completed"; readonly summary: string }
-  | { readonly type: "failed"; readonly category: string;
-      readonly message: string };
+`AdapterEvent`, `AdapterDescriptor`, and the separate handshake shape are the
+exact types in ARCHITECTURE.md section 6.8 and the schemas published by
+R1.06. ADR-0014 withdrew the earlier sketch that occupied this location; it
+must not be reintroduced as an alternate major-1 shape.
 
+```ts
 export type AssertionSpec =
   | { readonly type: "exit_code"; readonly command: string;
       readonly expected: number }
@@ -448,7 +433,7 @@ Terminal states are `completed`, `failed_infrastructure`, `timed_out`,
 | --- | --- | --- |
 | planned | materializing | The scheduler grants a concurrency slot and dispatches the task run. |
 | materializing | agent_running | Fixture hash verified, sandbox created, adapter spawned, and a valid handshake frame parsed. |
-| agent_running | collecting | The adapter emits a terminal `completed` or `failed` frame, or the adapter process exits. |
+| agent_running | collecting | The adapter emits a terminal `run_completed` or `run_failed` frame, or the adapter process exits. |
 | collecting | asserting | The trajectory record is sealed (or marked truncated) and the workspace snapshot is taken and content-addressed. |
 | asserting | judging | All deterministic and checker assertions evaluated and at least one judge assertion is declared. |
 | asserting | scored | All deterministic and checker assertions evaluated and no judge assertion is declared. |
@@ -508,21 +493,21 @@ versioned `assay-adapter/1` contract: newline-delimited JSON frames on
 stdout, one frame per line, UTF-8, each line at most 1 MiB.
 
 - **Handshake.** The first frame on stdout must be a `handshake` frame
-  carrying `contractVersion`, adapter identity, conformance tier, and the
-  declared tool catalog with semantic classes. A missing, malformed, or
-  unknown-major handshake is `adapter_protocol_error` (unknown major:
-  rejected with a stable error, FR-ADAPT-010) and the run fails as
-  infrastructure error without scoring.
-- **Event frames.** After the handshake, the adapter emits `model_request`,
-  `model_response`, `tool_call`, `tool_result`, `usage`, and `log` frames
-  in causal order. The supervisor validates every frame against the
+  carrying `contract`, `adapter`, `tier`, `model`, `tool_catalog`, and the
+  fixed capability booleans. After validation the harness writes one
+  `run_spec` line and keeps stdin open. A malformed handshake is
+  `adapter_protocol_error`; a syntactically valid unknown major is
+  `adapter_nonconformant` (FR-ADAPT-010). Neither path is scored.
+- **Event frames.** After the handshake, the adapter emits the ten exact
+  Architecture section 6 variants, beginning with `session_started`, in
+  causal order. The supervisor validates every frame against the
   published JSON Schema before use; a malformed frame is counted, bounded
   in diagnostics, and classified per the malformed-frame policy in
   section 6.4 — it never crashes the harness (FR-ADAPT-005).
-- **Termination.** Exactly one terminal frame (`completed` or `failed`)
-  ends the stream, followed by process exit. Exit without a terminal frame
-  marks the trajectory truncated. Frames after the terminal frame are
-  protocol errors.
+- **Termination.** Exactly one terminal frame (`run_completed` or
+  `run_failed`) ends the stream, followed by exit code 0 within 5 seconds.
+  Exit without a terminal frame, any nonzero exit, or a frame after the
+  terminal is `adapter_protocol_error` with a truncated trajectory.
 - **Stderr.** Adapter stderr is captured with a bounded ring buffer
   (head and tail retained, middle elided with a byte count), redacted, and
   attached to diagnostics only.
@@ -926,7 +911,7 @@ section 16, no other requirement may cite R0 as its terminal owner.
 
 ## 6. R1 — Task Format, Runner, and Deterministic Assertions
 
-**Status:** planned.
+**Status:** accepted.
 
 **Effort range:** 3–5 part-time weeks.
 
@@ -1237,7 +1222,9 @@ before returning bytes. Concurrent writers rely on WAL plus bounded-retry
     Definition of done: `assay validate` validates tasks, suites, and
     checkers without running anything (FR-TASK-010); `assay run
     <suite> --variant <name> -n N --seed S` produces the full flow; each
-    exit code is asserted by a subprocess test (FR-RUN-001, FR-RUN-010).
+    R1-reachable exit codes 0, 1, 4, 5, and 6 are asserted by subprocess
+    tests, while the full seven-value mapping is frozen in the shared
+    contract (FR-RUN-001, FR-RUN-010, ADR-0015).
 14. **R1.14 — Byte-reproducibility gate and golden regeneration.** Add
     the e2e suite that runs one suite twice with fixed seed and clock and
     compares exported bytes, plus the explicit
@@ -1266,7 +1253,7 @@ before returning bytes. Concurrent writers rely on WAL plus bounded-retry
 | store corruption quarantine | A flipped byte in a record or blob is silently served. | Hash verification fails, the record is quarantined and surfaced (FR-TRACE-009). |
 | append-only reruns | A rerun mutates or overwrites an earlier run's rows. | Reruns produce new run ids; prior records are byte-identical after the rerun (FR-RUN-009). |
 | byte reproducibility | Two identical simulated runs differ by one byte. | Full exported record bytes are identical across two runs and across macOS/Linux CI (FR-RUN-004, NFR-DET-004). |
-| exit-code subprocess suite | Any documented exit code is wrong or unreachable. | Subprocess tests assert 0, 1, 4, 5, and 6 from `assay run`/`assay validate` scenarios (FR-RUN-010). |
+| exit-code subprocess suite | Any R1-reachable exit code is wrong or the full mapping drifts. | Subprocess tests assert the R1-reachable outcomes 0, 1, 4, 5, and 6 from `assay run`/`assay validate` scenarios; contract tests pin all seven values (FR-RUN-010, ADR-0015). |
 | zero-provider CI probe | A required check opens a network connection to a provider. | Network sentinels in required suites observe zero provider egress (NFR-DET-001, NFR-COST-001). |
 
 ### 6.7 Failure and security cases
@@ -1313,7 +1300,9 @@ R1 is accepted only when:
   Linux CI (FR-RUN-004, NFR-DET-004);
 - the pathological-adapter, state-machine, checker-limit, store-crash,
   and quarantine suites are green;
-- every documented exit code is produced by a subprocess test;
+- Subprocess tests assert the R1-reachable outcomes 0, 1, 4, 5, and 6,
+  and contract tests pin all seven numeric mappings (FR-RUN-010,
+  ADR-0015);
 - required CI provably makes zero provider egress;
 - the docs check enforces the updated truthful claims.
 
@@ -1323,7 +1312,8 @@ R1 defers sandboxing and all isolation claims (R2), bounded parallelism
 and full cancellation/timeout enforcement (R2), real providers, BYOK, and
 usage reconciliation (R3), trajectory metrics and trajectory assertions
 (R4 — R1 persists raw redacted adapter events but computes no metric),
-budget evaluation (R5), all comparison statistics (R6), judge assertions
+budget evaluation and runtime production of exit code 2 (R5), all comparison
+statistics and runtime production of exit code 3 (R6), judge assertions
 (R7 — rejected at load), the Action (R8), the viewer (R9), and packaging
 (R10). The Robin adapter is deferred to R4; R1's only adapter is
 simulated.
@@ -1343,7 +1333,10 @@ FR-ASSERT-008 and FR-ASSERT-010 (sandboxed forms in R2), FR-TASK-008 and
 FR-TASK-009 (fixture/network declarations parse but their enforcement is
 R2), FR-ADAPT-008 (usage fields exist in frames; reconciliation is R3),
 and FR-TRAJ-005/FR-TRAJ-009 groundwork via raw event retention and
-truncation markers (owned by R4).
+truncation markers (owned by R4). Per ADR-0015, R1 terminally owns the stable
+seven-value FR-RUN-010 contract and proves its five currently reachable
+outcomes; R5 and R6 add genuine runtime reachability for codes 2 and 3
+without re-owning or renumbering that contract.
 
 ## 7. R2 — Sandboxed Execution
 
@@ -4493,7 +4486,7 @@ commit, or the docs consistency check fails.
 | `FR-RUN-007` | R1 | Run record golden binds suite/task hashes, variant, adapter, model, seeds, version. |
 | `FR-RUN-008` | R2 | Per-task and per-suite monotonic-clock timeout fixtures produce `timed_out`. |
 | `FR-RUN-009` | R1 | Rerun appends; prior run records byte-unchanged under hash comparison. |
-| `FR-RUN-010` | R1 | Subprocess tests pin all seven exit codes to their categories. |
+| `FR-RUN-010` | R1 | Contract tests pin all seven values and category mappings; subprocess tests prove R1-reachable 0/1/4/5/6, with real exit 2 and 3 reachability added by R5 and R6 per ADR-0015. |
 | `FR-RUN-011` | R2 | kill -9 during a run; next start recovers the store and reaps labeled sandboxes. |
 | `FR-RUN-012` | R5 | `--dry-run` prints tasks, variants, n, and spend ceiling with zero side effects. |
 
@@ -4755,7 +4748,7 @@ listed requirement's terminal owner in §16.
 | Task inheritance (`extends`) and matrix parameterization | R1 | FR-TASK-004, FR-TASK-005 |
 | Fixture references and task network/credential declarations | R2 | FR-TASK-008, FR-TASK-009 |
 | Task-format migration command and old-version fixtures | R10 | FR-TASK-011 |
-| Runner, run state machine, repeatability, exit codes, append-only records | R1 | FR-RUN-001–004, FR-RUN-007, FR-RUN-009, FR-RUN-010 |
+| Runner, run state machine, repeatability, stable seven-value exit-code contract, append-only records | R1 | FR-RUN-001–004, FR-RUN-007, FR-RUN-009, FR-RUN-010; R5/R6 add subsystem reachability per ADR-0015 |
 | Runner concurrency, cancellation, timeouts, crash recovery | R2 | FR-RUN-005, FR-RUN-006, FR-RUN-008, FR-RUN-011 |
 | Dry-run planning and the published cost model | R5 | FR-RUN-012, NFR-COST-003 |
 | Deterministic assertion layer incl. diff matching | R1 | FR-ASSERT-001, FR-ASSERT-002, FR-ASSERT-005, FR-ASSERT-009 |

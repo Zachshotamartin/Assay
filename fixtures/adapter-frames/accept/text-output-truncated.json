@@ -1,0 +1,8 @@
+{
+  "type": "text_output",
+  "seq": 8,
+  "ts": "2026-01-02T03:04:05.006Z",
+  "text": "bounded prefix",
+  "truncated": true,
+  "original_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+}

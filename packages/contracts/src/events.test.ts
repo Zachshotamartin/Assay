@@ -11,7 +11,9 @@ import {
   type AssayEvent
 } from "./events.js";
 
-const fixturesDirectory = fileURLToPath(new URL("../fixtures/events/", import.meta.url));
+const fixturesDirectory = fileURLToPath(
+  new URL("../../../fixtures/contract-events/events/", import.meta.url)
+);
 
 async function fixtures(): Promise<readonly { readonly file: string; readonly source: string }[]> {
   const files = (await readdir(fixturesDirectory)).filter((file) => file.endsWith(".json")).sort();

@@ -1,0 +1,133 @@
+{
+  "fixtureSchema": "assay-fixture-directory/1",
+  "generatorVersion": "r1-fixtures/1",
+  "fixtureId": "r1-adapter-frame-corpus",
+  "fixtureKind": "adapter-frame",
+  "manifestRoot": "fixtures/adapter-frames",
+  "contentHash": "sha256:5cc8624599ec3e6c1556a03e7db6548f4797bad468f7d715f578d0a8ea38f984",
+  "manifest": [
+    {
+      "path": "accept/handshake-black-box.json",
+      "sha256": "bb877ccfe575880a95bcae3f8de45d6392781d14547feb451a6164ca78e96c0c"
+    },
+    {
+      "path": "accept/handshake-full.json",
+      "sha256": "5798d201546fd92e28f58f55fc0209532c4ad7aa5c2957adc802778268b01f60"
+    },
+    {
+      "path": "accept/handshake-trajectory.json",
+      "sha256": "c4aa98e01ad3df8edcff05b31649010e09f2c9ae3276b2f556fe51ddd84d0be6"
+    },
+    {
+      "path": "accept/log.json",
+      "sha256": "5a997bee2cfb27896160283bcc9a043fe09e4c7c7fae29e22dd1c70ce86fe738"
+    },
+    {
+      "path": "accept/model-request.json",
+      "sha256": "41c98766333e7d032785e29e1be1642e96c4468a44df1488c9b54bbeb041d515"
+    },
+    {
+      "path": "accept/model-response.json",
+      "sha256": "8700ee131398b272b3ed5a82769d0665aa5996576ace5e3807210ac00b518304"
+    },
+    {
+      "path": "accept/run-completed.json",
+      "sha256": "565c8fa01dd7eec427d66fd90530b771dde821dadd98faba9304bc0e99e663d1"
+    },
+    {
+      "path": "accept/run-failed.json",
+      "sha256": "8eddbbb904baa61a3ce7fe743fd0b7cacd81553e5733104c9007d7f091392c2f"
+    },
+    {
+      "path": "accept/run-spec.json",
+      "sha256": "92aca278056b1d1c0f407bb6a3b4c6490d7e10ceae73db298171cbf82f502aba"
+    },
+    {
+      "path": "accept/session-started.json",
+      "sha256": "b9b43d082a55373ab1bac87a8441c050fb29be569523d7008dd8a6997684b529"
+    },
+    {
+      "path": "accept/text-output-truncated.json",
+      "sha256": "ca14cb7cd045279864696f2863bb2972ea7cfb10891cf5f16c83aa19c175f597"
+    },
+    {
+      "path": "accept/text-output.json",
+      "sha256": "432d46feac0f7d97d61f9f7a9e77981870e77b8902cf777e4d0b3bbcdc648699"
+    },
+    {
+      "path": "accept/tool-call.json",
+      "sha256": "f88b9972c170d972539937ae45221e9c108f09e886ee43185487e2e5178201fe"
+    },
+    {
+      "path": "accept/tool-result.json",
+      "sha256": "9aef007caced86754adf872dcbdf9fd6fe804f86760fa1d1badcd7c534e45959"
+    },
+    {
+      "path": "accept/usage.json",
+      "sha256": "c591f696bfc5f24ea31d740ee1fbaa248b85538dc9bf526b8867453cc9e38c47"
+    },
+    {
+      "path": "reject/event-imprecise-timestamp.json",
+      "sha256": "49e4dd8ebf628ce35f64038d1ff6fcd664db86cdeb69f4e7fcc21c3ce8e681c2"
+    },
+    {
+      "path": "reject/event-unknown-field.json",
+      "sha256": "06c76f068b7e039d35cce45f61b390ec92639976edbfea9785e66a18c4e9b768"
+    },
+    {
+      "path": "reject/event-unknown-type.json",
+      "sha256": "bd3814a61c0892854d19164d640a99b2ec4bc3eba2de20adbc781623bdcbb6bf"
+    },
+    {
+      "path": "reject/handshake-draft-shape.json",
+      "sha256": "9aaed6eb37d1851877ee5114a9816ae4536490623ba44e6703ad6a7ccdbec22f"
+    },
+    {
+      "path": "reject/handshake-duplicate-tool.json",
+      "sha256": "46d504c6d2ab79cf5173db3edb07d07b4489ca3596d76af712ebc47102e9d6a1"
+    },
+    {
+      "path": "reject/handshake-invalid-semver.json",
+      "sha256": "8a9029bb5eca6633164db34b233f77674f45ce9ba88cc45681ee74c4a68c0cb4"
+    },
+    {
+      "path": "reject/handshake-unknown-major.json",
+      "sha256": "7a87824a44ab42c6782e5abec0c16a2255855b0b9e17b4dc528b0e2ef4568485"
+    },
+    {
+      "path": "reject/truncation-incomplete.json",
+      "sha256": "70cc7b99fd261a2513d2860a157d11df20a13c568ab79de056175d9869599707"
+    },
+    {
+      "path": "reject/usage-arithmetic.json",
+      "sha256": "6f34c5b0e5b081b46950080b207185136ad38fa75f14d695c728586145c850f9"
+    }
+  ],
+  "suites": [],
+  "consumers": [
+    "packages/adapter-core/src/frames/codec.test.ts"
+  ],
+  "assurances": {
+    "synthetic": true,
+    "containsRealCredentials": false,
+    "containsRealUserRepositories": false,
+    "containsPrivateTranscripts": false,
+    "registeredSyntheticCanaries": []
+  },
+  "provenance": {
+    "origin": "repository-authored-synthetic",
+    "source": "Assay R1 planning and test corpus",
+    "license": "MIT",
+    "capturedFromExternalSystem": false
+  },
+  "regeneration": {
+    "mode": "hand-authored",
+    "command": "npm run fixtures:manifest -- fixtures/adapter-frames",
+    "verificationCommand": "npm run check:fixtures",
+    "instructions": [
+      "Edit only synthetic fixture source files and preserve the documented schema.",
+      "Refresh this manifest with npm run fixtures:manifest -- fixtures/adapter-frames.",
+      "Review every content and provenance change, then run npm run check:fixtures."
+    ]
+  }
+}

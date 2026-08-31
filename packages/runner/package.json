@@ -1,0 +1,30 @@
+{
+  "name": "@assay/runner",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Deterministic lifecycle and orchestration implementation for Assay.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Zachshotamartin/Assay.git"
+  },
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsc -b",
+    "typecheck": "tsc -b --pretty false"
+  },
+  "engines": {
+    "node": ">=22.0.0 <23.0.0",
+    "npm": ">=10.0.0 <11.0.0"
+  },
+  "dependencies": {
+    "@assay/contracts": "0.0.0"
+  }
+}

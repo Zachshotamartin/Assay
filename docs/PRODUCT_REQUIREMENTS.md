@@ -3,13 +3,14 @@
 Document status: normative product specification for the Assay evaluation
 harness. Last revised: 2026-08-30.
 
-Implementation status: the R0 repository, toolchain, CI, and governance
-substrate is accepted. The evaluation harness remains unimplemented; no
-product command, measurement, or later gate is accepted yet.
+Implementation status: R0 and R1 are accepted. R1 command evidence covers the
+source-built `validate` and `run` paths against the deterministic simulated
+adapter, with no isolation and no real agent or provider support.
 
-Every product capability described below is `planned`. A capability becomes claimable
-only when its owning release gate in [BUILD_PLAN.md](./BUILD_PLAN.md) names
-passing evidence. Statistical definitions and result wording are controlled by
+The requirements below remain normative targets. A capability becomes
+claimable only when its owning release gate in
+[BUILD_PLAN.md](./BUILD_PLAN.md) names passing evidence. Statistical
+definitions and result wording are controlled by
 [METHODOLOGY.md](./METHODOLOGY.md); component boundaries by
 [ARCHITECTURE.md](./ARCHITECTURE.md); the task schema by
 [TASK_FORMAT.md](./TASK_FORMAT.md); adapter conformance by
@@ -715,7 +716,9 @@ terminally proves it.
 - `FR-RUN-010`: Exit codes distinguish success, task failures, budget
   breach, comparison regression, invalid input or configuration,
   infrastructure error, and cancellation exactly as specified in
-  section 5.1.
+  section 5.1. ADR-0015 assigns R1 the stable seven-value contract and
+  stages runtime reachability for budget breach at R5 and comparison
+  regression at R6, where those subsystems are implemented.
 - `FR-RUN-011`: A crashed harness process leaves the store recoverable and
   sandboxes reapable on next start; recovery requires no manual database
   surgery.
@@ -1253,9 +1256,11 @@ has not been accepted.
 
 Current state, stated verbatim wherever the current state is described:
 
-> Assay is under implementation. Gate R0 is accepted with repository,
-> toolchain, CI, and GitHub governance evidence. Gates R1 through R10 remain
-> planned. No product gate beyond the repository substrate is accepted.
+> Assay is under implementation. Gates R0 and R1 are accepted with repository
+> governance, task-format, deterministic runner, assertion, store-core, and
+> cross-platform CI evidence. Gates R2 through R10 remain planned. No sandbox,
+> real-provider, trajectory, budget, statistical, judge, Action, viewer, or
+> packaged-release gate is accepted.
 
 ### 12.1 R0 — Repository, toolchain, and CI identity
 
@@ -1268,7 +1273,8 @@ product behavior may be claimed.
 
 When accepted: a suite runs against the simulated agent and produces a
 byte-reproducible result. Claimable: task authoring, validation, the runner
-state machine, deterministic and checker assertions, exit codes, append-only
+state machine, deterministic and checker assertions, the stable seven-value
+exit-code contract and R1-reachable outcomes 0/1/4/5/6, append-only
 persistence in the store core, and deterministic zero-dollar CI. Not
 claimable: sandboxing, real providers, trajectory metrics, budgets,
 statistics, judging, CI integration, or the viewer.

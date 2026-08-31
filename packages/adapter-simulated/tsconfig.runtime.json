@@ -1,0 +1,11 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "baseUrl": "../..",
+    "noEmit": true,
+    "paths": {
+      "@assay/adapter-core": ["packages/adapter-core/src/index.ts"],
+      "@assay/contracts": ["packages/contracts/src/index.ts"]
+    }
+  }
+}

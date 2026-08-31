@@ -1,13 +1,15 @@
 # Assay Task Format
 
 Document status: normative specification of the Assay task, suite, rubric,
-matrix, and checker file formats. Everything specified here is `planned`.
+matrix, and checker file formats. R1 is accepted; later behavior is planned.
 
 Last revised: 2026-08-30
 
-> Assay is under implementation. Gate R0 is accepted with repository,
-> toolchain, CI, and GitHub governance evidence. Gates R1 through R10 remain
-> planned. No product gate beyond the repository substrate is accepted.
+> Assay is under implementation. Gates R0 and R1 are accepted with repository
+> governance, task-format, deterministic runner, assertion, store-core, and
+> cross-platform CI evidence. Gates R2 through R10 remain planned. No sandbox,
+> real-provider, trajectory, budget, statistical, judge, Action, viewer, or
+> packaged-release gate is accepted.
 
 This document controls the task schema. Where it conflicts with an accepted
 ADR, PRODUCT_REQUIREMENTS.md, METHODOLOGY.md, BUILD_PLAN.md, or
@@ -933,12 +935,12 @@ and must not pass silently.
 
 ### 5.4 Deterministic ordering
 
-The resolved task set is ordered by task id (matrix instance id for
-expanded instances) in ascending UTF-8 byte order. Duplicate ids across the
-whole resolved set are `suite_invalid` (§3.2). This ordering is the
-execution planning order and the report row order (FR-TASK-006). Parallel
-execution may complete out of order; ordering here fixes identity, not
-scheduling.
+The resolved task set is ordered first by its resolved project-relative
+source path and then by task id (matrix instance id for expanded instances),
+each in ascending UTF-8 byte order. Duplicate ids across the whole resolved
+set are `suite_invalid` (§3.2). This ordering is the execution planning order
+and the report row order (FR-TASK-006). Parallel execution may complete out
+of order; ordering here fixes identity, not scheduling.
 
 ### 5.5 Suite budgets and spend ceiling
 

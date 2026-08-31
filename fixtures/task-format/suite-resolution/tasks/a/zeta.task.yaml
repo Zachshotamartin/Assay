@@ -1,0 +1,11 @@
+format_version: "1.0"
+id: zeta-task
+title: Path sorts before id
+tags: [selected]
+fixture: { path: ./fixture }
+prompt: Run zeta.
+toolset: { catalog: simulated/1 }
+sandbox:
+  image: example.invalid/fixture@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+  cpu: 1.5
+assertions: [{ type: exit_code, equals: 0 }]

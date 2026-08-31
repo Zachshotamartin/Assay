@@ -12,7 +12,7 @@ async function setting(name: string): Promise<Record<string, unknown>> {
   >;
 }
 
-describe("R0 GitHub governance payloads", () => {
+describe("GitHub governance payloads", () => {
   it("records exact protected-main checks and review rules", async () => {
     const value = await setting("branch-protection");
     const checks = value["required_status_checks"] as {
@@ -26,7 +26,14 @@ describe("R0 GitHub governance payloads", () => {
 
     expect(checks.strict).toBe(true);
     expect(checks.checks).toEqual(
-      ["typecheck", "lint-docs", "unit-property", "arch-boundaries"].map((context) => ({
+      [
+        "typecheck",
+        "lint-docs",
+        "unit-property",
+        "arch-boundaries",
+        "e2e-simulated",
+        "store-core"
+      ].map((context) => ({
         context,
         app_id: 15368
       }))

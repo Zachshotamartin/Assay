@@ -1,0 +1,9 @@
+format_version: "1.0"
+id: reference-suite
+title: Deterministic simulated-agent reference suite
+include:
+  - basic.task.yaml
+variants:
+  baseline:
+    adapter: simulated
+    model: synthetic/scripted-v1

@@ -1,0 +1,14 @@
+{
+  "type": "handshake",
+  "seq": 1,
+  "contract": "assay-adapter/1",
+  "adapter": { "id": "black-box", "version": "0.1.0" },
+  "tier": "black_box",
+  "model": null,
+  "tool_catalog": [],
+  "capabilities": {
+    "usage_reporting": false,
+    "cost_reporting": false,
+    "streaming_text": true
+  }
+}

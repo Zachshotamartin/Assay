@@ -3,6 +3,14 @@
   "references": [
     { "path": "scripts" },
     { "path": "packages/contracts" },
+    { "path": "packages/adapter-core" },
+    { "path": "packages/adapter-simulated" },
+    { "path": "packages/assertions" },
+    { "path": "packages/config" },
+    { "path": "packages/redaction" },
+    { "path": "packages/run-store" },
+    { "path": "packages/runner" },
+    { "path": "packages/task-format" },
     { "path": "apps/cli" }
   ]
 }

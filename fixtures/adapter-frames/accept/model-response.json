@@ -1,0 +1,10 @@
+{
+  "type": "model_response",
+  "seq": 4,
+  "ts": "2026-01-02T03:04:05.006Z",
+  "request_id": "request-1",
+  "status": "ok",
+  "stop_reason": "tool_use",
+  "latency_ms": 12,
+  "text": "I will inspect the file."
+}

@@ -1,0 +1,1 @@
+{"scenario_version":1,"steps":[{"emit":{"type":"session_started","sessionId":"sim-session"}},{"emit":{"type":"text_output","text":"A deterministic plain-text answer."}},{"emit":{"type":"run_completed","summary":"Completed plain-text run."}}]}
