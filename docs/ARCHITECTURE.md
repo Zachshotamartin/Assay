@@ -1,13 +1,13 @@
 # Assay Architecture
 
-Document status: normative architecture specification. R0 and R1 have
-branch-local implementation and local evidence, but neither gate is accepted;
-the remaining architecture is planned. Last revised: 2026-08-30.
+Document status: normative architecture specification. R0 and R1 are
+accepted; the remaining architecture is planned. Last revised: 2026-08-30.
 
-> Assay is under implementation. Gate R0 is accepted with repository,
-> toolchain, CI, and GitHub governance evidence. Gate R1 has code and local
-> evidence in progress; gates R2 through R10 remain planned. No evaluation
-> product gate is accepted.
+> Assay is under implementation. Gates R0 and R1 are accepted with repository
+> governance, task-format, deterministic runner, assertion, store-core, and
+> cross-platform CI evidence. Gates R2 through R10 remain planned. No sandbox,
+> real-provider, trajectory, budget, statistical, judge, Action, viewer, or
+> packaged-release gate is accepted.
 
 This document controls component boundaries and interfaces. It is subordinate
 to accepted ADRs, to PRODUCT_REQUIREMENTS.md for user-visible semantics, to

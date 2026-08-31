@@ -19,24 +19,25 @@ deterministic synthetic agent for zero dollars.**
 
 ## Implementation Status
 
-> Assay is under implementation. Gate R0 is accepted with repository,
-> toolchain, CI, and GitHub governance evidence. Gate R1 has code and local
-> evidence in progress; gates R2 through R10 remain planned. No evaluation
-> product gate is accepted.
+> Assay is under implementation. Gates R0 and R1 are accepted with repository
+> governance, task-format, deterministic runner, assertion, store-core, and
+> cross-platform CI evidence. Gates R2 through R10 remain planned. No sandbox,
+> real-provider, trajectory, budget, statistical, judge, Action, viewer, or
+> packaged-release gate is accepted.
 
-R0 is accepted on main. Only the branch-local R1 surfaces named below have
-evaluation-product implementation and local evidence; they are not accepted
-product capabilities. The table is the complete current inventory.
+R0 and R1 are accepted on main. The source-built R1 surfaces named below are
+the complete accepted evaluation-product inventory; later-gate behavior
+remains planned.
 
 | Area | Exists now | Planned |
 | --- | --- | --- |
-| Documentation | The normative set, accepted R0 evidence, machine-checked status, and governed R1 branch fixtures | Gate-by-gate current-versus-planned updates |
-| Code | Accepted Node 22 substrate plus branch-local R1 task/suite loaders, deterministic runner, simulated adapter, deterministic assertions, capture-boundary redaction, and local evidence store | Product packages added only by their owning gates |
-| CLI | Source-built `--help`, `--version`, `validate`, and `run` have local R1 evidence; `run` supports only the in-repo simulated adapter | `assay init/compare/report/matrix/judge/view/gc/db/export/delete/doctor/redact-check`, real-agent adapters, and release packaging |
+| Documentation | The normative set, accepted R0/R1 evidence, machine-checked status, and governed fixtures | Gate-by-gate current-versus-planned updates |
+| Code | Accepted Node 22 substrate plus R1 task/suite loaders, deterministic runner, simulated adapter, deterministic assertions, capture-boundary redaction, and local evidence store | Product packages added only by their owning gates |
+| CLI | Source-built `--help`, `--version`, `validate`, and `run` are accepted for the in-repo simulated adapter | `assay init/compare/report/matrix/judge/view/gc/db/export/delete/doctor/redact-check`, real-agent adapters, and release packaging |
 | Sandbox | None; every R1 execution is recorded as `unsafe_host` evidence and emits the unsafe-host warning | Per-run OCI containers, no network by default, and guaranteed cleanup (R2; ADR-0004) |
 | Statistics | None | Wilson intervals, exact tests, FDR control, seeded bootstrap, MDE reporting (ADR-0006) |
-| CI integration | R0 CI and GitHub governance are accepted; deterministic R1 workflow and local checks exist while final R1 CI links are pending | GitHub Action posting a delta table and blocking on regression (R8) |
-| Evidence | R0 is accepted; R1 has a truthful in-progress local evidence record | Gate-by-gate acceptance evidence per `docs/BUILD_PLAN.md` |
+| CI integration | R0 governance plus deterministic R1 Linux/macOS workflows are accepted | GitHub Action posting a delta table and blocking on regression (R8) |
+| Evidence | R0 and R1 have linked local and GitHub acceptance records | Gate-by-gate acceptance evidence per `docs/BUILD_PLAN.md` |
 
 ## Landscape
 
@@ -58,11 +59,10 @@ Assay's difference is the narrow claim above: statistically defended,
 budget-aware, trajectory-level PR blocking, locally, for zero dollars in the
 deterministic tier.
 
-## Source-checkout R1 Preview (Unaccepted)
+## Source-checkout R1
 
-The R1 gate branch can build and exercise the deterministic reference corpus
-from source with Node.js 22. This is source-only preview evidence, not a
-published install or an acceptance claim:
+The accepted R1 source tree builds and exercises the deterministic reference
+corpus with Node.js 22. This is source-only usage, not a published install:
 
 ```sh
 npm ci --ignore-scripts
@@ -156,14 +156,15 @@ a distinct failure with its own exit code, never folded into quality.
 
 ## Release Gates
 
-The build plan defines eleven gates. Each unlocks specific evidence; R0 is
-accepted, R1 is in progress, and R2 through R10 are planned. The full definitions, tickets, and dependency edges are in
+The build plan defines eleven gates. Each unlocks specific evidence; R0 and
+R1 are accepted, and R2 through R10 are planned. The full definitions,
+tickets, and dependency edges are in
 [docs/BUILD_PLAN.md](docs/BUILD_PLAN.md).
 
 | Gate | Title | Evidence unlocked | Status |
 | --- | --- | --- | --- |
 | R0 | Repository, toolchain, and CI identity | Repository, toolchain, CI, and architecture checks exist and are green. | accepted |
-| R1 | Task format, runner, and deterministic assertions | A suite runs against the simulated agent and produces a byte-reproducible result. | in progress |
+| R1 | Task format, runner, and deterministic assertions | A suite runs against the simulated agent and produces a byte-reproducible result. | accepted |
 | R2 | Sandboxed execution | Fixtures materialize in an isolated container with enforced limits and guaranteed cleanup, even after a killed run. | planned |
 | R3 | Real providers, BYOK, and usage accounting | A real provider runs through BYOK with token, cost, and latency accounting reconciled against provider-reported usage. | planned |
 | R4 | Trajectory capture and scoring | Complete trajectories are captured and scored against trajectory assertions. | planned |
@@ -184,7 +185,7 @@ end-to-end suite deterministic and free. The adapter pins the tested Robin
 version and preview flag spellings and re-verifies when Robin's automation
 contract freezes at Robin's R7 gate; until then its conformance tier is
 pinned-preview. R1 does not support Robin or any other real agent or
-provider; its branch-local evidence uses only the in-repo
+provider; its accepted evidence uses only the in-repo
 `adapter-simulated` scripted agent. A paid live provider is never used to
 prove logic a synthetic one can prove.
 

@@ -55,9 +55,9 @@ Every deliverable has one of four statuses:
 A package, type, command stub, or happy-path unit test is not completion. A
 gate is accepted only when its user flow, failure behavior, persistence
 implications, isolation behavior, documentation, installation impact, and
-acceptance evidence all pass together. At the time of this revision, every
-gate in this plan is **planned**. No section below may be read as describing
-running software.
+acceptance evidence all pass together. At the time of this revision, R0 and
+R1 are **accepted** and R2 through R10 are **planned**. Only accepted-gate
+sections may be read as describing running software.
 
 ### 1.2 Product gates and release names
 
@@ -134,37 +134,35 @@ evidence may cite an unaccepted predecessor's behavior.
 
 ## 2. Current Baseline: What Is and Is Not Built
 
-### 2.1 Repository substrate accepted; R1 branch implementation exists
+### 2.1 Repository substrate and deterministic runner accepted
 
-R0 is accepted on main with repository, toolchain, CI, and live GitHub
-governance evidence. R1 has code and local evidence on its gate branch. It
-contains the task and suite formats, the
+R0 and R1 are accepted on main with repository governance and deterministic
+cross-platform evidence. R1 contains the task and suite formats, the
 source-built `validate` and `run` CLI paths, the deterministic simulated
 adapter, assertions, redaction, the local evidence store, fixtures, tests,
-and deterministic CI workflow definitions. R1 is an in-progress artifact,
-not an accepted release or a product-availability claim. R2 through R10
-remain planned.
+and deterministic CI workflow definitions. It remains source-only and has no
+sandbox or real-provider support. R2 through R10 remain planned.
 
 ### 2.2 Current product claim
 
-Until R1 is accepted, the truthful claim — used verbatim wherever the
-current state is described — is:
+The truthful claim — used verbatim wherever the current state is described —
+is:
 
-> Assay is under implementation. Gate R0 is accepted with repository,
-> toolchain, CI, and GitHub governance evidence. Gate R1 has code and local
-> evidence in progress; gates R2 through R10 remain planned. No evaluation
-> product gate is accepted.
+> Assay is under implementation. Gates R0 and R1 are accepted with repository
+> governance, task-format, deterministic runner, assertion, store-core, and
+> cross-platform CI evidence. Gates R2 through R10 remain planned. No sandbox,
+> real-provider, trajectory, budget, statistical, judge, Action, viewer, or
+> packaged-release gate is accepted.
 
 ### 2.3 What may not be claimed
 
-Because no product gate is accepted, the following remain forbidden as
+Because only R0 and R1 are accepted, the following remain forbidden as
 release or product-capability claims in any README, package description,
 demo, talk, social post, release tag, or portfolio bullet until the named
-gate is accepted. A narrowly scoped gate-branch evidence statement must say
-that it is local, in progress, and unaccepted:
+gate is accepted:
 
-- that an accepted or released `assay` product runs, validates, compares, or
-  reports anything (R1);
+- that Assay is published or installable, or that its accepted source-built
+  `validate` and simulated `run` surface extends to real agents (R10/R3);
 - that Assay isolates or sandboxes agent execution (R2);
 - that Assay accounts for tokens, dollars, or latency (R3);
 - that Assay scores trajectories or detects agent loops (R4);
@@ -913,7 +911,7 @@ section 16, no other requirement may cite R0 as its terminal owner.
 
 ## 6. R1 — Task Format, Runner, and Deterministic Assertions
 
-**Status:** in progress.
+**Status:** accepted.
 
 **Effort range:** 3–5 part-time weeks.
 
