@@ -101,6 +101,11 @@
       "file": "scripts/ci-workflow.test.ts",
       "title": "exposes the exact required e2e context while retaining macOS evidence [NFR-DET-004]",
       "requirementId": "NFR-DET-004"
+    },
+    {
+      "file": "scripts/github-governance.test.ts",
+      "title": "retains PR semantic-review evidence in squash commits [NFR-MAINT-005]",
+      "requirementId": "NFR-MAINT-005"
     }
   ]
 }
