@@ -134,26 +134,25 @@ evidence may cite an unaccepted predecessor's behavior.
 
 ## 2. Current Baseline: What Is and Is Not Built
 
-### 2.1 Nothing is built
+### 2.1 Repository substrate is built
 
-There is no accepted substrate, no preview branch, and no prototype. The
-repository contains normative planning documents only: this plan, the
-companion specifications listed above, and the accepted ADRs under
-`docs/decisions/`. No package, executable, schema file, fixture, test, or
-CI workflow exists yet. Every gate in section 1.2 is planned.
+R0 is accepted. The repository has the pinned Node/npm substrate, bootstrap
+CLI, contracts, schemas, architecture and documentation checks, governed CI,
+dependency review, and live GitHub protections recorded by R0 evidence. The
+evaluation product begins at R1 and remains unaccepted.
 
 ### 2.2 Current product claim
 
 Until R1 is accepted, the truthful claim — used verbatim wherever the
 current state is described — is:
 
-> Assay is a fully specified, unimplemented evaluation harness. This
-> repository currently contains normative planning documents only. No
-> command, gate, or measurement described here exists yet.
+> Assay is under implementation. Gate R0 is accepted with repository,
+> toolchain, CI, and GitHub governance evidence. Gates R1 through R10 remain
+> planned. No product gate beyond the repository substrate is accepted.
 
 ### 2.3 What may not be claimed
 
-Because nothing is implemented, the following are forbidden in any README,
+Because no evaluation-product gate is accepted, the following are forbidden in any README,
 package description, demo, talk, social post, release tag, or portfolio
 bullet until the named gate is accepted:
 
@@ -686,7 +685,7 @@ differentiating implementation.
 
 ## 5. R0 — Repository, Toolchain, and CI Identity
 
-**Status:** planned.
+**Status:** accepted.
 
 **Effort range:** 3–5 focused days, including GitHub verification and CI
 bring-up.

@@ -1,0 +1,34 @@
+{
+  "name": "@assay/contracts",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Private implementation skeleton for Assay shared contracts.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Zachshotamartin/Assay.git"
+  },
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./schemas/assay-event.v1.schema.json": "./schemas/assay-event.v1.schema.json"
+  },
+  "files": [
+    "dist",
+    "schemas"
+  ],
+  "scripts": {
+    "build": "tsc -b",
+    "typecheck": "tsc -b --pretty false"
+  },
+  "engines": {
+    "node": ">=22.0.0 <23.0.0",
+    "npm": ">=10.0.0 <11.0.0"
+  },
+  "dependencies": {
+    "ajv": "8.20.0"
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "workspaces": {
+    "apps/cli": ["packages/contracts"],
+    "packages/contracts": []
+  }
+}

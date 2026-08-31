@@ -1,0 +1,6 @@
+{
+  "workspaces": {
+    "apps/cli": ["packages/alpha"],
+    "packages/alpha": []
+  }
+}

@@ -19,22 +19,22 @@ deterministic synthetic agent for zero dollars.**
 
 ## Implementation Status
 
-> Assay is a fully specified, unimplemented evaluation harness. This
-> repository currently contains normative planning documents only. No
-> command, gate, or measurement described here exists yet.
+> Assay is under implementation. Gate R0 is accepted with repository,
+> toolchain, CI, and GitHub governance evidence. Gates R1 through R10 remain
+> planned. No product gate beyond the repository substrate is accepted.
 
-Every command, schema, metric, and guarantee in this README is planned.
-The table below is the complete honest inventory.
+The product commands, metrics, and evaluation guarantees in this README remain
+planned. The table below is the complete honest inventory.
 
 | Area | Exists now | Planned |
 | --- | --- | --- |
-| Documentation | The full normative doc set under `docs/` and the ADRs under `docs/decisions/` | Kept current by a CI docs check from R0 onward |
-| Code | None; zero packages, zero tests, zero binaries | TypeScript on Node.js 22 LTS, npm workspaces monorepo per ADR-0001 |
-| CLI | None; `assay` does not exist | `assay init/validate/run/compare/report/matrix/judge/view/gc/db/export/delete/doctor/redact-check` |
+| Documentation | The normative set plus an accepted R0 docs/status checker | Gate-by-gate current-versus-planned updates |
+| Code | Accepted R0 Node 22 workspace skeleton, contracts, schemas, and tests; no evaluation runner | Product packages added only by their owning gates |
+| CLI | Accepted bootstrap `--help` and `--version`; product commands reject | `assay init/validate/run/compare/report/matrix/judge/view/gc/db/export/delete/doctor/redact-check` |
 | Sandbox | None | Per-run OCI containers, no network by default, guaranteed cleanup (ADR-0004) |
 | Statistics | None | Wilson intervals, exact tests, FDR control, seeded bootstrap, MDE reporting (ADR-0006) |
-| CI integration | None | GitHub Action posting a delta table and blocking on regression (R8) |
-| Evidence | None; every gate below is planned | Gate-by-gate acceptance evidence per `docs/BUILD_PLAN.md` |
+| CI integration | Deterministic R0 CI, protected-main checks, review rules, release approval, and immutable version tags are active | GitHub Action posting a delta table and blocking on regression (R8) |
+| Evidence | R0 is accepted with local, branch-CI, and live GitHub-governance evidence | Gate-by-gate acceptance evidence per `docs/BUILD_PLAN.md` |
 
 ## Landscape
 
@@ -95,8 +95,8 @@ Suite: coding-core   n = 10 runs/task/variant   seed = 42
 | Task            | Baseline rate     | Candidate rate    | Delta (95% CI)        | q     | Verdict             |
 |-----------------|-------------------|-------------------|-----------------------|-------|---------------------|
 | fix-null-deref  | 0.90 [0.60, 0.98] | 0.40 [0.17, 0.69] | -0.50 [-0.78, -0.08]  | 0.032 | regression detected |
-| add-cli-flag    | 0.80 [0.49, 0.94] | 0.90 [0.60, 0.98] | +0.10 [-0.22, 0.41]   | 0.611 | no significant difference at stated MDE |
-| refactor-store  | 1.00 [0.72, 1.00] | 1.00 [0.72, 1.00] | 0.00 [-0.28, 0.28]    | 1.000 | no significant difference at stated MDE |
+| add-cli-flag    | 0.80 [0.49, 0.94] | 0.90 [0.60, 0.98] | +0.10 [-0.22, 0.41]   | 0.611 | no significant difference detected (minimum detectable effect at n=10: 42 pp) |
+| refactor-store  | 1.00 [0.72, 1.00] | 1.00 [0.72, 1.00] | 0.00 [-0.28, 0.28]    | 1.000 | no significant difference detected (minimum detectable effect at n=10: 42 pp) |
 
 Suite delta: -0.13 [-0.24, -0.03]
 (stratified paired-by-task bootstrap, BCa, B = 10,000, seed 42)
@@ -151,13 +151,13 @@ a distinct failure with its own exit code, never folded into quality.
 
 ## Release Gates
 
-The build plan defines eleven gates. Each unlocks specific evidence; none
-has been started. The full definitions, tickets, and dependency edges are in
+The build plan defines eleven gates. Each unlocks specific evidence; R0 is
+accepted and R1 through R10 remain planned. The full definitions, tickets, and dependency edges are in
 [docs/BUILD_PLAN.md](docs/BUILD_PLAN.md).
 
 | Gate | Title | Evidence unlocked | Status |
 | --- | --- | --- | --- |
-| R0 | Repository, toolchain, and CI identity | Repository, toolchain, CI, and architecture checks exist and are green. | planned |
+| R0 | Repository, toolchain, and CI identity | Repository, toolchain, CI, and architecture checks exist and are green. | accepted |
 | R1 | Task format, runner, and deterministic assertions | A suite runs against the simulated agent and produces a byte-reproducible result. | planned |
 | R2 | Sandboxed execution | Fixtures materialize in an isolated container with enforced limits and guaranteed cleanup, even after a killed run. | planned |
 | R3 | Real providers, BYOK, and usage accounting | A real provider runs through BYOK with token, cost, and latency accounting reconciled against provider-reported usage. | planned |

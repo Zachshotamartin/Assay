@@ -8,9 +8,9 @@ where the ecosystem moves fast.
 
 Last revised: 2026-08-30.
 
-> Assay is a fully specified, unimplemented evaluation harness. This
-> repository currently contains normative planning documents only. No command,
-> gate, or measurement described here exists yet.
+> Assay is under implementation. Gate R0 is accepted with repository,
+> toolchain, CI, and GitHub governance evidence. Gates R1 through R10 remain
+> planned. No product gate beyond the repository substrate is accepted.
 
 ## 1. Why this document exists
 

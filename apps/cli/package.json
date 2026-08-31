@@ -1,0 +1,26 @@
+{
+  "name": "@assay/cli",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Private implementation skeleton for the planned Assay CLI.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Zachshotamartin/Assay.git"
+  },
+  "type": "module",
+  "bin": {
+    "assay": "dist/bin.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "node ../../esbuild.config.mjs",
+    "typecheck": "tsc -b"
+  },
+  "engines": {
+    "node": ">=22.0.0 <23.0.0",
+    "npm": ">=10.0.0 <11.0.0"
+  }
+}

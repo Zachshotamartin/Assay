@@ -1,0 +1,48 @@
+{
+  "name": "assay-monorepo",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Implementation in progress for the Assay local-first agent evaluation harness.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Zachshotamartin/Assay.git"
+  },
+  "homepage": "https://github.com/Zachshotamartin/Assay#readme",
+  "bugs": {
+    "url": "https://github.com/Zachshotamartin/Assay/issues"
+  },
+  "engines": {
+    "node": ">=22.0.0 <23.0.0",
+    "npm": ">=10.0.0 <11.0.0"
+  },
+  "packageManager": "npm@10.9.8",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "clean:build": "node scripts/clean-build.mjs",
+    "build": "npm run clean:build && tsc -b --force --pretty false && node esbuild.config.mjs",
+    "typecheck": "tsc -b --pretty false && tsc -p tsconfig.tests.json --noEmit --pretty false",
+    "test": "vitest run --workspace vitest.workspace.ts --passWithNoTests",
+    "test:unit": "vitest run --workspace vitest.workspace.ts --passWithNoTests",
+    "test:property": "vitest run --workspace vitest.workspace.ts --passWithNoTests",
+    "lint:architecture": "node --import tsx scripts/check-architecture.ts",
+    "lint:docs": "node --import tsx scripts/check-docs.ts",
+    "check:architecture": "npm run lint:architecture",
+    "check:docs": "npm run lint:docs",
+    "lint": "npm run lint:docs && npm run lint:architecture",
+    "verify": "npm run typecheck && npm run lint && npm test && npm run build"
+  },
+  "devDependencies": {
+    "@types/node": "22.20.1",
+    "esbuild": "0.28.2",
+    "fast-check": "4.9.0",
+    "tsx": "4.23.13",
+    "typescript": "5.9.3",
+    "vitest": "3.2.7",
+    "yaml": "2.9.0"
+  }
+}
