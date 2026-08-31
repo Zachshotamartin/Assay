@@ -1,10 +1,10 @@
 # Assay: Privacy and Data Handling
 
-Status of every behavior in this document: **planned**. Assay is a fully
-specified, unimplemented evaluation harness. This repository currently
-contains normative planning documents only. No command, gate, or
-measurement described here exists yet. Each section names the requirement
-that owns it and the build gate whose acceptance evidence proves it.
+Status of every behavior in this document: **planned**. R0 and R1 have
+branch-local code and local evidence, but neither gate is accepted. R1 uses
+only the deterministic simulated adapter and supports no real agent or
+provider. Each section names the requirement that owns it and the build gate
+whose acceptance evidence proves it.
 
 The governing principle (NFR-PRIV-001): all data is local by default. The
 only egress is an explicit provider call the user configured. There is no

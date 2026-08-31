@@ -19,23 +19,24 @@ deterministic synthetic agent for zero dollars.**
 
 ## Implementation Status
 
-> Assay is under implementation. Gate R0 code and CI evidence exist on an
-> open pull request, but R0 is not accepted because required private-repository
-> branch protection and review controls are unavailable on the current GitHub
-> plan. No later product gate is accepted.
+> Assay is under implementation. Gates R0 and R1 have code and local evidence
+> on gate branches, but neither is accepted: R0 is blocked by unavailable
+> private-repository branch protection and review controls on the current GitHub
+> plan, and R1 depends on accepted R0. No product gate is accepted.
 
-The product commands, metrics, and evaluation guarantees in this README remain
-planned. The table below is the complete honest inventory.
+Only the branch-local R0 and R1 surfaces named below have implementation and
+local evidence. They are not accepted product capabilities. The table is the
+complete current inventory.
 
 | Area | Exists now | Planned |
 | --- | --- | --- |
-| Documentation | The normative set plus an R0 docs/status checker on the open gate branch | Gate-by-gate current-versus-planned updates |
-| Code | R0 Node 22 workspace skeleton, contracts, schemas, and tests on the open gate branch; no evaluation runner | Product packages added only by their owning gates |
-| CLI | Bootstrap `--help` and `--version` only on the open gate branch; product commands reject | `assay init/validate/run/compare/report/matrix/judge/view/gc/db/export/delete/doctor/redact-check` |
-| Sandbox | None | Per-run OCI containers, no network by default, guaranteed cleanup (ADR-0004) |
+| Documentation | The normative set, machine-checked status, and governed R0/R1 branch fixtures | Accepted-gate evidence and gate-by-gate current-versus-planned updates |
+| Code | On gate branches: the Node 22 substrate plus the R1 task/suite loaders, deterministic runner, simulated adapter, deterministic assertions, capture-boundary redaction, and local evidence store | Product packages added only by their owning gates |
+| CLI | Source-built `--help`, `--version`, `validate`, and `run` have local R1 evidence; `run` supports only the in-repo simulated adapter | `assay init/compare/report/matrix/judge/view/gc/db/export/delete/doctor/redact-check`, real-agent adapters, and release packaging |
+| Sandbox | None; every R1 execution is recorded as `unsafe_host` evidence and emits the unsafe-host warning | Per-run OCI containers, no network by default, and guaranteed cleanup (R2; ADR-0004) |
 | Statistics | None | Wilson intervals, exact tests, FDR control, seeded bootstrap, MDE reporting (ADR-0006) |
-| CI integration | Deterministic R0 branch CI is green; required private-repo protection is plan-blocked | GitHub Action posting a delta table and blocking on regression (R8) |
-| Evidence | R0 local and branch-CI evidence exists, but R0 is not accepted | Gate-by-gate acceptance evidence per `docs/BUILD_PLAN.md` |
+| CI integration | Deterministic R0/R1 workflows and local checks exist on gate branches; final R1 CI links are pending, and required private-repository controls remain plan-blocked | GitHub Action posting a delta table and blocking on regression (R8) |
+| Evidence | R0 and R1 have local gate-branch evidence, but neither gate is accepted and no R1 acceptance document exists yet | Gate-by-gate acceptance evidence per `docs/BUILD_PLAN.md` |
 
 ## Landscape
 
@@ -57,28 +58,31 @@ Assay's difference is the narrow claim above: statistically defended,
 budget-aware, trajectory-level PR blocking, locally, for zero dollars in the
 deterministic tier.
 
-## Planned Quick Start
+## Source-checkout R1 Preview (Unaccepted)
 
-**Planned — none of these commands exist yet.** This section shows the
-intended workflow the requirements bind; it is a specification, not usage.
+The R1 gate branch can build and exercise the deterministic reference corpus
+from source with Node.js 22. This is source-only preview evidence, not a
+published install or an acceptance claim:
 
-Contributor step 1, before any toolchain work, is authenticating the GitHub
-CLI (this is ticket R0.01 and the first bootstrap step in
-[docs/OPERATIONS_TEST_PLAN.md](docs/OPERATIONS_TEST_PLAN.md)):
-
-```text
-$ gh auth login
-✓ Logged in to github.com
-
-$ gh auth status
-✓ Logged in to github.com account <you> (keyring)
-✓ Token scopes: repo, workflow
-
-$ gh api user
-{ "login": "<you>", … }
+```sh
+npm ci --ignore-scripts
+npm run build
+node apps/cli/dist/bin.js validate fixtures/suites/reference
+node apps/cli/dist/bin.js run fixtures/suites/reference.suite.yaml --variant baseline --adapter simulated -n 10 --seed 42
 ```
 
-The intended user workflow:
+R1 has no sandbox or isolation boundary. Every R1 execution is durable
+`unsafe_host` evidence and prints the unsafe-host warning; tasks containing
+command-executing assertions also require an explicit `--unsafe-host-exec`
+flag. The only supported R1 subject is the deterministic in-repo simulated
+adapter. No real agent or provider is supported, and this workflow makes no
+provider call.
+
+## Planned Product Workflow
+
+The packaged product workflow below remains planned. These unqualified
+`assay` invocations and their illustrative output are a specification, not
+current source-checkout usage.
 
 ```text
 $ assay init
@@ -152,14 +156,14 @@ a distinct failure with its own exit code, never folded into quality.
 
 ## Release Gates
 
-The build plan defines eleven gates. Each unlocks specific evidence; R0 is in
-progress and no gate is accepted. The full definitions, tickets, and dependency edges are in
+The build plan defines eleven gates. Each unlocks specific evidence; R0 and R1
+are in progress and no gate is accepted. The full definitions, tickets, and dependency edges are in
 [docs/BUILD_PLAN.md](docs/BUILD_PLAN.md).
 
 | Gate | Title | Evidence unlocked | Status |
 | --- | --- | --- | --- |
 | R0 | Repository, toolchain, and CI identity | Repository, toolchain, CI, and architecture checks exist and are green. | in progress |
-| R1 | Task format, runner, and deterministic assertions | A suite runs against the simulated agent and produces a byte-reproducible result. | planned |
+| R1 | Task format, runner, and deterministic assertions | A suite runs against the simulated agent and produces a byte-reproducible result. | in progress |
 | R2 | Sandboxed execution | Fixtures materialize in an isolated container with enforced limits and guaranteed cleanup, even after a killed run. | planned |
 | R3 | Real providers, BYOK, and usage accounting | A real provider runs through BYOK with token, cost, and latency accounting reconciled against provider-reported usage. | planned |
 | R4 | Trajectory capture and scoring | Complete trajectories are captured and scored against trajectory assertions. | planned |
@@ -172,16 +176,17 @@ progress and no gate is accepted. The full definitions, tickets, and dependency 
 
 ## First Subject: Robin
 
-Robin, a coding-agent CLI developed in a sibling repository, is the first
-subject under test — through `adapter-robin`, subprocess-only, never linked
-in-process. Robin's deterministic credential-free synthetic provider
-(`robin --print` on a synthetic profile) makes Assay's Robin end-to-end
-suite deterministic and free. The adapter pins the tested Robin version and
-preview flag spellings and re-verifies when Robin's automation contract
-freezes at Robin's R7 gate; until then its conformance tier is
-pinned-preview. Assay's own logic is proven one level lower by the in-repo
-`adapter-simulated` scripted agent, which requires no Robin at all. A paid
-live provider is never used to prove logic a synthetic one can prove.
+Robin, a coding-agent CLI developed in a sibling repository, is the planned
+first real subject under test — through `adapter-robin`, subprocess-only,
+never linked in-process. Robin's deterministic credential-free synthetic
+provider (`robin --print` on a synthetic profile) makes Assay's Robin
+end-to-end suite deterministic and free. The adapter pins the tested Robin
+version and preview flag spellings and re-verifies when Robin's automation
+contract freezes at Robin's R7 gate; until then its conformance tier is
+pinned-preview. R1 does not support Robin or any other real agent or
+provider; its branch-local evidence uses only the in-repo
+`adapter-simulated` scripted agent. A paid live provider is never used to
+prove logic a synthetic one can prove.
 
 ## Documentation Map
 
@@ -233,6 +238,6 @@ Ground rules that bind every contribution:
 
 ## License
 
-MIT (license file to be added when the repository is initialized at R0).
+MIT. See [LICENSE](LICENSE).
 
 Last revised: 2026-08-30.

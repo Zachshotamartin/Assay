@@ -1,16 +1,18 @@
 # Assay Agent Compatibility and Adapter Conformance
 
-Document status: planned — normative for adapter conformance details. Where
-this document conflicts with an accepted ADR, PRODUCT_REQUIREMENTS.md,
+Document status: normative for adapter conformance details. The R1 simulated
+adapter contract has branch-local implementation and local evidence but is not
+accepted; Robin and later conformance behavior remain planned. Where this
+document conflicts with an accepted ADR, PRODUCT_REQUIREMENTS.md,
 METHODOLOGY.md, BUILD_PLAN.md, ARCHITECTURE.md, or TASK_FORMAT.md, those
 documents control, in that order.
 
 Last revised: 2026-08-30.
 
-> Assay is under implementation. Gate R0 code and CI evidence exist on an
-> open pull request, but R0 is not accepted because required private-repository
-> branch protection and review controls are unavailable on the current GitHub
-> plan. No later product gate is accepted.
+> Assay is under implementation. Gates R0 and R1 have code and local evidence
+> on gate branches, but neither is accepted: R0 is blocked by unavailable
+> private-repository branch protection and review controls on the current GitHub
+> plan, and R1 depends on accepted R0. No product gate is accepted.
 
 Assay evaluates coding and tool-using agents. An agent participates in an
 evaluation through an **adapter**: a subprocess that speaks the versioned

@@ -9,11 +9,11 @@ document on a statistical matter, this document controls, subordinate only to
 the accepted ADRs it elaborates (ADR-0006, statistical method; ADR-0007, judge
 model policy; ADR-0009, cost accounting source of truth).
 
-Implementation status: Assay is a fully specified, unimplemented evaluation
-harness. This repository currently contains normative planning documents only.
-No command, gate, or measurement described here exists yet. Every mechanism in
-this document is `planned`; the acceptance evidence for each lives in
-BUILD_PLAN.md gates R6 (statistical comparison) and R7 (judge assertions).
+Implementation status: R0 and R1 have branch-local code and local evidence, but
+neither gate is accepted. They implement no statistical comparison or judge
+capability. Every mechanism in this document remains `planned`; the acceptance
+evidence for each lives in BUILD_PLAN.md gates R6 (statistical comparison) and
+R7 (judge assertions).
 
 Rules of this contract:
 

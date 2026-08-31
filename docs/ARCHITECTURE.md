@@ -1,12 +1,13 @@
 # Assay Architecture
 
-Document status: normative planning document. Everything described here is
-`planned`. Last revised: 2026-08-30.
+Document status: normative architecture specification. R0 and R1 have
+branch-local implementation and local evidence, but neither gate is accepted;
+the remaining architecture is planned. Last revised: 2026-08-30.
 
-> Assay is under implementation. Gate R0 code and CI evidence exist on an
-> open pull request, but R0 is not accepted because required private-repository
-> branch protection and review controls are unavailable on the current GitHub
-> plan. No later product gate is accepted.
+> Assay is under implementation. Gates R0 and R1 have code and local evidence
+> on gate branches, but neither is accepted: R0 is blocked by unavailable
+> private-repository branch protection and review controls on the current GitHub
+> plan, and R1 depends on accepted R0. No product gate is accepted.
 
 This document controls component boundaries and interfaces. It is subordinate
 to accepted ADRs, to PRODUCT_REQUIREMENTS.md for user-visible semantics, to

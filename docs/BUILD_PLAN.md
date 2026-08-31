@@ -134,31 +134,38 @@ evidence may cite an unaccepted predecessor's behavior.
 
 ## 2. Current Baseline: What Is and Is Not Built
 
-### 2.1 Nothing is built
+### 2.1 Branch implementation exists; no gate is accepted
 
-There is no accepted substrate, no preview branch, and no prototype. The
-repository contains normative planning documents only: this plan, the
-companion specifications listed above, and the accepted ADRs under
-`docs/decisions/`. No package, executable, schema file, fixture, test, or
-CI workflow exists yet. Every gate in section 1.2 is planned.
+R0 and R1 have code and local evidence on gate branches. Those branches
+contain the Node.js substrate, contracts, task and suite formats, the
+source-built `validate` and `run` CLI paths, the deterministic simulated
+adapter, assertions, redaction, the local evidence store, fixtures, tests,
+and deterministic CI workflow definitions. They are in-progress artifacts,
+not an accepted release or a product-availability claim. R0 remains blocked
+by unavailable private-repository branch protection and review controls on
+the current GitHub plan; R1 depends on accepted R0. R2 through R10 remain
+planned.
 
 ### 2.2 Current product claim
 
 Until R1 is accepted, the truthful claim — used verbatim wherever the
 current state is described — is:
 
-> Assay is under implementation. Gate R0 code and CI evidence exist on an
-> open pull request, but R0 is not accepted because required private-repository
-> branch protection and review controls are unavailable on the current GitHub
-> plan. No later product gate is accepted.
+> Assay is under implementation. Gates R0 and R1 have code and local evidence
+> on gate branches, but neither is accepted: R0 is blocked by unavailable
+> private-repository branch protection and review controls on the current GitHub
+> plan, and R1 depends on accepted R0. No product gate is accepted.
 
 ### 2.3 What may not be claimed
 
-Because nothing is implemented, the following are forbidden in any README,
-package description, demo, talk, social post, release tag, or portfolio
-bullet until the named gate is accepted:
+Because no product gate is accepted, the following remain forbidden as
+release or product-capability claims in any README, package description,
+demo, talk, social post, release tag, or portfolio bullet until the named
+gate is accepted. A narrowly scoped gate-branch evidence statement must say
+that it is local, in progress, and unaccepted:
 
-- that `assay` runs, validates, compares, or reports anything (R1);
+- that an accepted or released `assay` product runs, validates, compares, or
+  reports anything (R1);
 - that Assay isolates or sandboxes agent execution (R2);
 - that Assay accounts for tokens, dollars, or latency (R3);
 - that Assay scores trajectories or detects agent loops (R4);
@@ -907,7 +914,7 @@ section 16, no other requirement may cite R0 as its terminal owner.
 
 ## 6. R1 — Task Format, Runner, and Deterministic Assertions
 
-**Status:** planned.
+**Status:** in progress.
 
 **Effort range:** 3–5 part-time weeks.
 

@@ -1,5 +1,5 @@
 current_claim: >-
-  Assay is under implementation. Gate R0 code and CI evidence exist on an open pull request, but R0 is not accepted because required private-repository branch protection and review controls are unavailable on the current GitHub plan. No later product gate is accepted.
+  Assay is under implementation. Gates R0 and R1 have code and local evidence on gate branches, but neither is accepted: R0 is blocked by unavailable private-repository branch protection and review controls on the current GitHub plan, and R1 depends on accepted R0. No product gate is accepted.
 claim_documents:
   - README.md
   - docs/README.md
@@ -20,7 +20,7 @@ planned_install_sections:
     - 14.4 Rollback
 gates:
   R0: in progress
-  R1: planned
+  R1: in progress
   R2: planned
   R3: planned
   R4: planned

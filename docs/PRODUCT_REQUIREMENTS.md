@@ -3,13 +3,15 @@
 Document status: normative product specification for the Assay evaluation
 harness. Last revised: 2026-08-30.
 
-Implementation status: Assay is a fully specified, unimplemented evaluation
-harness. This repository currently contains normative planning documents only.
-No command, gate, or measurement described here exists yet.
+Implementation status: R0 and R1 have code and local evidence on gate branches,
+but neither is accepted. The only branch-local R1 command evidence is for the
+source-built `validate` and `run` paths against the deterministic simulated
+adapter, with no isolation and no real agent or provider support.
 
-Every capability described below is `planned`. A capability becomes claimable
-only when its owning release gate in [BUILD_PLAN.md](./BUILD_PLAN.md) names
-passing evidence. Statistical definitions and result wording are controlled by
+The requirements below remain normative targets. A capability becomes
+claimable only when its owning release gate in
+[BUILD_PLAN.md](./BUILD_PLAN.md) names passing evidence. Statistical
+definitions and result wording are controlled by
 [METHODOLOGY.md](./METHODOLOGY.md); component boundaries by
 [ARCHITECTURE.md](./ARCHITECTURE.md); the task schema by
 [TASK_FORMAT.md](./TASK_FORMAT.md); adapter conformance by
@@ -1253,10 +1255,10 @@ has not been accepted.
 
 Current state, stated verbatim wherever the current state is described:
 
-> Assay is under implementation. Gate R0 code and CI evidence exist on an
-> open pull request, but R0 is not accepted because required private-repository
-> branch protection and review controls are unavailable on the current GitHub
-> plan. No later product gate is accepted.
+> Assay is under implementation. Gates R0 and R1 have code and local evidence
+> on gate branches, but neither is accepted: R0 is blocked by unavailable
+> private-repository branch protection and review controls on the current GitHub
+> plan, and R1 depends on accepted R0. No product gate is accepted.
 
 ### 12.1 R0 — Repository, toolchain, and CI identity
 

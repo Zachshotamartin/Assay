@@ -1,11 +1,11 @@
 # Assay: Threat Model
 
-Status of every control in this document: **planned**. Assay is a fully
-specified, unimplemented evaluation harness. This repository currently
-contains normative planning documents only. No command, gate, or measurement
-described here exists yet. Every control below names the planned evidence
-that must exist before the control may be claimed, and the build gate
-(R0–R10, per BUILD_PLAN.md) whose acceptance criteria own that evidence.
+Status of every control in this document: **planned**. R0 and R1 have
+branch-local code and local evidence, but neither gate is accepted. R1 has no
+sandbox or isolation boundary, and its simulated runs are unsafe-host evidence.
+Every control below names the planned evidence that must exist before the
+control may be claimed, and the build gate (R0–R10, per BUILD_PLAN.md) whose
+acceptance criteria own that evidence.
 
 Last revised: 2026-08-30.
 

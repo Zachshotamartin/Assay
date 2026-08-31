@@ -8,10 +8,10 @@ where the ecosystem moves fast.
 
 Last revised: 2026-08-30.
 
-> Assay is under implementation. Gate R0 code and CI evidence exist on an
-> open pull request, but R0 is not accepted because required private-repository
-> branch protection and review controls are unavailable on the current GitHub
-> plan. No later product gate is accepted.
+> Assay is under implementation. Gates R0 and R1 have code and local evidence
+> on gate branches, but neither is accepted: R0 is blocked by unavailable
+> private-repository branch protection and review controls on the current GitHub
+> plan, and R1 depends on accepted R0. No product gate is accepted.
 
 ## 1. Why this document exists
 
@@ -31,10 +31,11 @@ This document therefore does three things:
 - states Assay's narrow defensible claim and shows, tool by tool, which
   pieces of that claim each neighbor already has.
 
-Every Assay capability mentioned below is `planned`. Comparing a plan against
-shipped products is inherently asymmetric; the honest reading of every
-comparison in this file is "what Assay intends to do differently", never
-"what Assay does better today", because today Assay does nothing.
+No Assay capability mentioned below is accepted. R0 and R1 have branch-local
+code and local evidence only; comparing that in-progress work against shipped
+products remains inherently asymmetric. The honest reading of every comparison
+in this file is "what Assay intends to do differently", never "what Assay does
+better today."
 
 ## 2. The neighbors
 

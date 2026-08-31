@@ -1,8 +1,9 @@
 # Assay: Installation, Testing, Operations, and Release Plan
 
 Document status: normative lifecycle, verification, and release specification
-for the Assay evaluation harness. Every gate, command, and measurement in this
-document is `planned`.
+for the Assay evaluation harness. R0 and R1 have gate-branch code and local
+evidence but are not accepted; later gates, release commands, and product
+measurements remain planned.
 
 Last revised: 2026-08-30.
 
@@ -25,10 +26,10 @@ R0-R10 release evidence.
 
 Current baseline, stated verbatim wherever the current state is described:
 
-> Assay is under implementation. Gate R0 code and CI evidence exist on an
-> open pull request, but R0 is not accepted because required private-repository
-> branch protection and review controls are unavailable on the current GitHub
-> plan. No later product gate is accepted.
+> Assay is under implementation. Gates R0 and R1 have code and local evidence
+> on gate branches, but neither is accepted: R0 is blocked by unavailable
+> private-repository branch protection and review controls on the current GitHub
+> plan, and R1 depends on accepted R0. No product gate is accepted.
 
 Assay's default architecture is one local CLI process (`assay`) operating on a
 project checkout, a per-project SQLite-plus-blob trace store under `.assay/`,
