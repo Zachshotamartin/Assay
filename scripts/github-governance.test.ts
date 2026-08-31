@@ -12,7 +12,7 @@ async function setting(name: string): Promise<Record<string, unknown>> {
   >;
 }
 
-describe("R0 GitHub governance payloads", () => {
+describe("GitHub governance payloads", () => {
   it("records exact protected-main checks and review rules", async () => {
     const value = await setting("branch-protection");
     const checks = value["required_status_checks"] as {
