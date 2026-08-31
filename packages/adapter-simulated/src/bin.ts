@@ -72,6 +72,11 @@ async function main(): Promise<number> {
     return 2;
   }
 
+  if (scenario.steps.some((step) =>
+    "misbehave" in step && step.misbehave === "ignore_sigterm")) {
+    process.on("SIGTERM", () => undefined);
+  }
+
   await writeStdout(SIMULATED_ADAPTER_HANDSHAKE_FRAME);
 
   let spec: ReturnType<typeof parseAdapterRunSpecFrame>;
