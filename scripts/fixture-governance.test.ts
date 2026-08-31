@@ -5,6 +5,7 @@ import { join, resolve } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 
 import {
+  findPackageLocalFixtureCorpora,
   FIXTURE_DIRECTORY_SCHEMA,
   R1_FIXTURE_GROUPS,
   verifyR1FixtureGovernance
@@ -23,11 +24,14 @@ describe("NFR-MAINT-005 non-golden R1 fixture governance", () => {
     expect(R1_FIXTURE_GROUPS.map((group) => group.fixturePath)).toEqual([
       "fixtures/repos",
       "fixtures/suites/reference",
-      "fixtures/trajectories"
+      "fixtures/trajectories",
+      "fixtures/task-format",
+      "fixtures/adapter-frames",
+      "fixtures/contract-events"
     ]);
 
     const verified = await verifyR1FixtureGovernance(repositoryRoot);
-    expect(verified).toHaveLength(3);
+    expect(verified).toHaveLength(6);
     for (const { group, metadata } of verified) {
       expect(metadata).toMatchObject({
         fixtureSchema: FIXTURE_DIRECTORY_SCHEMA,
@@ -63,6 +67,15 @@ describe("NFR-MAINT-005 non-golden R1 fixture governance", () => {
     }
   });
 
+  it("NFR-MAINT-005 keeps product data fixtures under governed root directories", async () => {
+    await expect(findPackageLocalFixtureCorpora(repositoryRoot)).resolves.toEqual([]);
+
+    await expect(readFile(
+      join(repositoryRoot, "packages", "run-store", "src", "fixtures", "crash-writer.ts"),
+      "utf8"
+    )).resolves.toContain("openRunStore");
+  });
+
   it("fails closed when a governed fixture changes without refreshed metadata", async () => {
     const temporaryRoot = await mkdtemp(join(tmpdir(), "assay-fixture-governance-"));
     temporaryRoots.push(temporaryRoot);
@@ -71,7 +84,7 @@ describe("NFR-MAINT-005 non-golden R1 fixture governance", () => {
       errorOnExist: true
     });
 
-    await expect(verifyR1FixtureGovernance(temporaryRoot)).resolves.toHaveLength(3);
+    await expect(verifyR1FixtureGovernance(temporaryRoot)).resolves.toHaveLength(6);
     await appendFile(
       join(temporaryRoot, "fixtures", "trajectories", "happy-multi-turn.json"),
       "\n",
