@@ -133,4 +133,26 @@ describe("R1 CI workflow contract", () => {
     expect(commands.indexOf("npm run test:e2e:simulated"))
       .toBeGreaterThan(commands.indexOf("npm run build"));
   });
+
+  it("runs the exact clean-clone R1 acceptance commands after build with no provider secrets", async () => {
+    const value = await workflow();
+    const commands = value.jobs?.["e2e-simulated"]?.steps
+      ?.map(({ run }) => run)
+      .filter((run): run is string => run !== undefined) ?? [];
+    const buildIndex = commands.indexOf("npm run build");
+    const fixtureCheck = commands.indexOf("npm run check:fixtures");
+    const validate = commands.indexOf(
+      "node apps/cli/dist/bin.js validate fixtures/suites/reference"
+    );
+    const run = commands.indexOf(
+      "node apps/cli/dist/bin.js run fixtures/suites/reference.suite.yaml " +
+      "--variant baseline --adapter simulated -n 10 --seed 42"
+    );
+
+    expect(buildIndex).toBeGreaterThanOrEqual(0);
+    expect(fixtureCheck).toBeGreaterThan(buildIndex);
+    expect(validate).toBeGreaterThan(buildIndex);
+    expect(run).toBeGreaterThan(validate);
+    expect(await readFile(workflowPath, "utf8")).not.toMatch(/secrets\s*\./u);
+  });
 });
