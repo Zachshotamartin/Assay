@@ -57,13 +57,22 @@ import {
 interface RunRow {
   readonly run_id: string;
   readonly created_at_utc: string;
-  readonly suite_hash: string;
-  readonly variant: string;
+  readonly suite_path: string;
+  readonly suite_content_hash: string;
+  readonly variant_name: string;
+  readonly config_hash: string;
   readonly adapter_id: string;
   readonly adapter_version: string;
-  readonly model_id: string | null;
-  readonly seed: number;
+  readonly contract_version: string;
+  readonly adapter_tier: string;
+  readonly model_provider: string | null;
+  readonly model_name: string | null;
+  readonly model_family: string | null;
+  readonly root_seed: number;
   readonly harness_version: string;
+  readonly pricing_catalog_version: string;
+  readonly runs_per_task: number;
+  readonly isolation_label: string;
   readonly status: string;
   readonly record_json: string;
   readonly record_hash: string;
@@ -74,7 +83,9 @@ interface TaskRunRow {
   readonly run_id: string;
   readonly task_id: string;
   readonly task_content_hash: string;
+  readonly repetition: number;
   readonly attempt: number;
+  readonly seed: string;
   readonly state: string;
   readonly outcome: string | null;
   readonly error_category: string | null;
@@ -329,13 +340,22 @@ function rowProjectionMatchesRun(row: RunRow, record: RunRecord): boolean {
   return (
     row.run_id === record.runId &&
     row.created_at_utc === record.createdAtUtc &&
-    row.suite_hash === record.suiteHash &&
-    row.variant === record.variant &&
+    row.suite_path === record.suitePath &&
+    row.suite_content_hash === record.suiteContentHash &&
+    row.variant_name === record.variant.name &&
+    row.config_hash === record.configHash &&
     row.adapter_id === record.adapterId &&
     row.adapter_version === record.adapterVersion &&
-    row.model_id === record.modelId &&
-    row.seed === record.seed &&
+    row.contract_version === record.contractVersion &&
+    row.adapter_tier === record.adapterTier &&
+    row.model_provider === (record.providerReportedModel?.provider ?? null) &&
+    row.model_name === (record.providerReportedModel?.model ?? null) &&
+    row.model_family === (record.providerReportedModel?.family ?? null) &&
+    row.root_seed === record.rootSeed &&
     row.harness_version === record.harnessVersion &&
+    row.pricing_catalog_version === record.pricingCatalogVersion &&
+    row.runs_per_task === record.runsPerTask &&
+    row.isolation_label === record.isolationLabel &&
     row.status === record.status
   );
 }
@@ -346,7 +366,9 @@ function rowProjectionMatchesTaskRun(row: TaskRunRow, record: TaskRunRecord): bo
     row.run_id === record.runId &&
     row.task_id === record.taskId &&
     row.task_content_hash === record.taskContentHash &&
+    row.repetition === record.repetition &&
     row.attempt === record.attempt &&
+    row.seed === record.seed &&
     row.state === record.state &&
     row.outcome === record.outcome &&
     row.error_category === record.errorCategory
@@ -482,7 +504,7 @@ class SqliteRunStore implements RunStore {
     return this.#read(() =>
       this.#database
         .prepare<[], RunRow>(
-          "SELECT run_id, created_at_utc, suite_hash, variant, adapter_id, adapter_version, model_id, seed, harness_version, status, record_json, record_hash FROM runs ORDER BY created_at_utc, run_id"
+          "SELECT run_id, created_at_utc, suite_path, suite_content_hash, variant_name, config_hash, adapter_id, adapter_version, contract_version, adapter_tier, model_provider, model_name, model_family, root_seed, harness_version, pricing_catalog_version, runs_per_task, isolation_label, status, record_json, record_hash FROM runs ORDER BY created_at_utc, run_id"
         )
         .all()
     );
@@ -493,7 +515,7 @@ class SqliteRunStore implements RunStore {
       return this.#read(() =>
         this.#database
           .prepare<[], TaskRunRow>(
-            "SELECT task_run_id, run_id, task_id, task_content_hash, attempt, state, outcome, error_category, record_json, record_hash FROM task_runs ORDER BY run_id, task_id, attempt, task_run_id"
+            "SELECT task_run_id, run_id, task_id, task_content_hash, repetition, attempt, seed, state, outcome, error_category, record_json, record_hash FROM task_runs ORDER BY run_id, task_id, repetition, attempt, task_run_id"
           )
           .all()
       );
@@ -501,7 +523,7 @@ class SqliteRunStore implements RunStore {
     return this.#read(() =>
       this.#database
         .prepare<[string], TaskRunRow>(
-          "SELECT task_run_id, run_id, task_id, task_content_hash, attempt, state, outcome, error_category, record_json, record_hash FROM task_runs WHERE run_id = ? ORDER BY task_id, attempt, task_run_id"
+          "SELECT task_run_id, run_id, task_id, task_content_hash, repetition, attempt, seed, state, outcome, error_category, record_json, record_hash FROM task_runs WHERE run_id = ? ORDER BY task_id, repetition, attempt, task_run_id"
         )
         .all(runId)
     );
@@ -844,20 +866,51 @@ class SqliteRunStore implements RunStore {
       await this.#writeTransaction(() => {
         this.#database
           .prepare<
-            [string, string, string, string, string, string, string | null, number, string, string, string, string]
+            [
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string | null,
+              string | null,
+              string | null,
+              number,
+              string,
+              string,
+              number,
+              string,
+              string,
+              string,
+              string
+            ]
           >(
-            "INSERT INTO runs (run_id, created_at_utc, suite_hash, variant, adapter_id, adapter_version, model_id, seed, harness_version, status, record_json, record_hash) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+            "INSERT INTO runs (run_id, created_at_utc, suite_path, suite_content_hash, variant_name, config_hash, adapter_id, adapter_version, contract_version, adapter_tier, model_provider, model_name, model_family, root_seed, harness_version, pricing_catalog_version, runs_per_task, isolation_label, status, record_json, record_hash) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
           )
           .run(
             runId,
             record.createdAtUtc,
-            record.suiteHash,
-            record.variant,
+            record.suitePath,
+            record.suiteContentHash,
+            record.variant.name,
+            record.configHash,
             record.adapterId,
             record.adapterVersion,
-            record.modelId,
-            record.seed,
+            record.contractVersion,
+            record.adapterTier,
+            record.providerReportedModel?.provider ?? null,
+            record.providerReportedModel?.model ?? null,
+            record.providerReportedModel?.family ?? null,
+            record.rootSeed,
             record.harnessVersion,
+            record.pricingCatalogVersion,
+            record.runsPerTask,
+            record.isolationLabel,
             record.status,
             encoded.json,
             encoded.hash
@@ -919,10 +972,10 @@ class SqliteRunStore implements RunStore {
 
     const existing = this.#read(() =>
       this.#database
-        .prepare<[string, string, number], TaskRunRow>(
-          "SELECT task_run_id, run_id, task_id, task_content_hash, attempt, state, outcome, error_category, record_json, record_hash FROM task_runs WHERE run_id = ? AND task_id = ? AND attempt = ?"
+        .prepare<[string, string, number, number], TaskRunRow>(
+          "SELECT task_run_id, run_id, task_id, task_content_hash, repetition, attempt, seed, state, outcome, error_category, record_json, record_hash FROM task_runs WHERE run_id = ? AND task_id = ? AND repetition = ? AND attempt = ?"
         )
-        .get(runId, input.taskId, input.attempt)
+        .get(runId, input.taskId, input.repetition, input.attempt)
     );
     if (existing !== undefined) {
       const existingRecord = await this.#verifiedTaskRun(existing);
@@ -940,7 +993,7 @@ class SqliteRunStore implements RunStore {
       if (expected !== existing.record_json) {
         throw new AssayError(
           "internal_invariant",
-          `internal_invariant: task run natural key (${runId}, ${input.taskId}, ${input.attempt}) already names different immutable evidence; no row changed; append a new attempt`
+          `internal_invariant: task run natural key (${runId}, ${input.taskId}, ${input.repetition}, ${input.attempt}) already names different immutable evidence; no row changed; append a new attempt`
         );
       }
       return existingRecord.taskRunId;
@@ -963,16 +1016,18 @@ class SqliteRunStore implements RunStore {
       await this.#writeTransaction(() => {
         this.#database
           .prepare<
-            [string, string, string, string, number, string, string | null, string | null, string, string]
+            [string, string, string, string, number, number, string, string, string | null, string | null, string, string]
           >(
-            "INSERT INTO task_runs (task_run_id, run_id, task_id, task_content_hash, attempt, state, outcome, error_category, record_json, record_hash) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+            "INSERT INTO task_runs (task_run_id, run_id, task_id, task_content_hash, repetition, attempt, seed, state, outcome, error_category, record_json, record_hash) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
           )
           .run(
             taskRunId,
             runId,
             record.taskId,
             record.taskContentHash,
+            record.repetition,
             record.attempt,
+            record.seed,
             record.state,
             record.outcome,
             record.errorCategory,
@@ -1004,10 +1059,10 @@ class SqliteRunStore implements RunStore {
 
     const existing = this.#read(() =>
       this.#database
-        .prepare<[string, string, number], TaskRunRow>(
-          "SELECT task_run_id, run_id, task_id, task_content_hash, attempt, state, outcome, error_category, record_json, record_hash FROM task_runs WHERE run_id = ? AND task_id = ? AND attempt = ?"
+        .prepare<[string, string, number, number], TaskRunRow>(
+          "SELECT task_run_id, run_id, task_id, task_content_hash, repetition, attempt, seed, state, outcome, error_category, record_json, record_hash FROM task_runs WHERE run_id = ? AND task_id = ? AND repetition = ? AND attempt = ?"
         )
-        .get(runId, input.taskId, input.attempt)
+        .get(runId, input.taskId, input.repetition, input.attempt)
     );
     if (existing !== undefined) {
       const existingRecord = await this.#verifiedTaskRun(existing);
@@ -1025,7 +1080,7 @@ class SqliteRunStore implements RunStore {
       if (expected !== existing.record_json) {
         throw new AssayError(
           "internal_invariant",
-          `internal_invariant: task run natural key (${runId}, ${input.taskId}, ${input.attempt}) already names different immutable evidence; no row changed; append a new attempt`
+          `internal_invariant: task run natural key (${runId}, ${input.taskId}, ${input.repetition}, ${input.attempt}) already names different immutable evidence; no row changed; append a new attempt`
         );
       }
       const seenSequences = new Set<number>();
@@ -1090,16 +1145,18 @@ class SqliteRunStore implements RunStore {
       await this.#writeTransaction(() => {
         this.#database
           .prepare<
-            [string, string, string, string, number, string, string | null, string | null, string, string]
+            [string, string, string, string, number, number, string, string, string | null, string | null, string, string]
           >(
-            "INSERT INTO task_runs (task_run_id, run_id, task_id, task_content_hash, attempt, state, outcome, error_category, record_json, record_hash) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+            "INSERT INTO task_runs (task_run_id, run_id, task_id, task_content_hash, repetition, attempt, seed, state, outcome, error_category, record_json, record_hash) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
           )
           .run(
             taskRunId,
             runId,
             record.taskId,
             record.taskContentHash,
+            record.repetition,
             record.attempt,
+            record.seed,
             record.state,
             record.outcome,
             record.errorCategory,
@@ -1266,7 +1323,7 @@ class SqliteRunStore implements RunStore {
     const row = this.#read(() =>
       this.#database
         .prepare<[string], RunRow>(
-          "SELECT run_id, created_at_utc, suite_hash, variant, adapter_id, adapter_version, model_id, seed, harness_version, status, record_json, record_hash FROM runs WHERE run_id = ?"
+          "SELECT run_id, created_at_utc, suite_path, suite_content_hash, variant_name, config_hash, adapter_id, adapter_version, contract_version, adapter_tier, model_provider, model_name, model_family, root_seed, harness_version, pricing_catalog_version, runs_per_task, isolation_label, status, record_json, record_hash FROM runs WHERE run_id = ?"
         )
         .get(id)
     );
@@ -1291,7 +1348,7 @@ class SqliteRunStore implements RunStore {
     const row = this.#read(() =>
       this.#database
         .prepare<[string], TaskRunRow>(
-          "SELECT task_run_id, run_id, task_id, task_content_hash, attempt, state, outcome, error_category, record_json, record_hash FROM task_runs WHERE task_run_id = ?"
+          "SELECT task_run_id, run_id, task_id, task_content_hash, repetition, attempt, seed, state, outcome, error_category, record_json, record_hash FROM task_runs WHERE task_run_id = ?"
         )
         .get(id)
     );
@@ -1323,8 +1380,8 @@ class SqliteRunStore implements RunStore {
     for (const row of this.#runRows()) {
       const record = await this.#verifiedRun(row);
       if (
-        (query.suiteHash !== undefined && record.suiteHash !== query.suiteHash) ||
-        (query.variant !== undefined && record.variant !== query.variant) ||
+        (query.suiteContentHash !== undefined && record.suiteContentHash !== query.suiteContentHash) ||
+        (query.variant !== undefined && record.variant.name !== query.variant) ||
         (query.adapterId !== undefined && record.adapterId !== query.adapterId) ||
         (query.status !== undefined && record.status !== query.status)
       ) {

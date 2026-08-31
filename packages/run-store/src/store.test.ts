@@ -92,16 +92,40 @@ function storeOptions(
 function newRun(overrides: Partial<NewRunRecord> = {}): NewRunRecord {
   return {
     createdAtUtc: wallTime,
-    suiteHash: createContentHash("a".repeat(64)),
-    variant: createVariantName("baseline"),
-    adapterId: "simulated",
+    suitePath: "suites/core.suite.yaml",
+    suiteContentHash: createContentHash("a".repeat(64)),
+    tasks: [{
+      taskId: createTaskId("task-a"),
+      taskContentHash: createContentHash("b".repeat(64)),
+      repetitions: 10,
+      rootSeed: 17,
+      seedStrategy: "derived",
+      effectiveSeeds: Array.from({ length: 10 }, (_, index) => `seed-${index}`)
+    }],
+    variant: {
+      name: createVariantName("baseline"),
+      adapter: "simulated",
+      model: "synthetic/scripted-v1",
+      promptVersion: null,
+      toolsetVersion: null,
+      agentVersion: null
+    },
+    configHash: createContentHash("c".repeat(64)),
+    adapterId: "adapter-simulated",
     adapterVersion: "1.0.0",
-    modelId: null,
-    seed: 17,
+    contractVersion: "assay-adapter/1",
+    adapterTier: "full",
+    providerReportedModel: {
+      provider: "synthetic",
+      model: "scripted-v1",
+      family: "synthetic"
+    },
+    rootSeed: 17,
     harnessVersion: "0.0.0",
+    pricingCatalogVersion: "catalog-v1",
     runsPerTask: 10,
     status: "completed",
-    isolation: "container",
+    isolationLabel: "isolated",
     ...overrides
   };
 }
@@ -113,7 +137,9 @@ function newTaskRun(
   return {
     taskId: createTaskId("task-a"),
     taskContentHash: createContentHash("b".repeat(64)),
+    repetition: 0,
     attempt: 0,
+    seed: "seed-0",
     state: "completed",
     outcome: "pass",
     errorCategory: null,
@@ -241,7 +267,7 @@ describe("R1.12 store core", () => {
       type: "RunPlanned",
       run_id: runId,
       timestamp: wallTime,
-      payload: { suite_hash: runInput.suiteHash }
+      payload: { suite_hash: runInput.suiteContentHash }
     };
 
     const eventId = await store.appendEvent(runId, 0, event);

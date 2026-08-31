@@ -53,21 +53,47 @@ const trajectoryBytes = new TextEncoder().encode("crash injection trajectory");
 const trajectoryHash = createBlobHash(sha256Blob(trajectoryBytes));
 const runRecord: NewRunRecord = {
   createdAtUtc: wallTime,
-  suiteHash: createContentHash("c".repeat(64)),
-  variant: createVariantName("baseline"),
-  adapterId: "simulated",
+  suitePath: "suites/crash.suite.yaml",
+  suiteContentHash: createContentHash("c".repeat(64)),
+  tasks: [{
+    taskId: createTaskId("task-crash"),
+    taskContentHash: createContentHash("d".repeat(64)),
+    repetitions: 1,
+    rootSeed: 23,
+    seedStrategy: "derived",
+    effectiveSeeds: ["crash-seed"]
+  }],
+  variant: {
+    name: createVariantName("baseline"),
+    adapter: "simulated",
+    model: "synthetic/scripted-v1",
+    promptVersion: null,
+    toolsetVersion: null,
+    agentVersion: null
+  },
+  configHash: createContentHash("e".repeat(64)),
+  adapterId: "adapter-simulated",
   adapterVersion: "1.0.0",
-  modelId: null,
-  seed: 23,
+  contractVersion: "assay-adapter/1",
+  adapterTier: "full",
+  providerReportedModel: {
+    provider: "synthetic",
+    model: "scripted-v1",
+    family: "synthetic"
+  },
+  rootSeed: 23,
   harnessVersion: "0.0.0",
+  pricingCatalogVersion: "catalog-v1",
   runsPerTask: 1,
   status: "completed",
-  isolation: "container"
+  isolationLabel: "isolated"
 };
 const taskRun: NewTaskRunRecord = {
   taskId: createTaskId("task-crash"),
   taskContentHash: createContentHash("d".repeat(64)),
+  repetition: 0,
   attempt: 0,
+  seed: "crash-seed",
   state: "completed",
   outcome: "pass",
   errorCategory: null,

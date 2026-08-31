@@ -1,4 +1,6 @@
 import { createHash } from "node:crypto";
+import { realpath } from "node:fs/promises";
+import { relative, sep } from "node:path";
 
 import {
   createHostCommandRunner,
@@ -18,6 +20,7 @@ import {
   type AdapterEvent,
   type AdapterSupervisionResult
 } from "@assay/adapter-core";
+import { SIMULATED_ADAPTER_DESCRIPTOR } from "@assay/adapter-simulated";
 import {
   aggregateExitCode,
   ASSAY_ERROR_CATEGORIES,
@@ -155,6 +158,46 @@ function normalizedAdapterId(value: unknown): string {
     "adapter_unavailable",
     `adapter_unavailable: adapter ${JSON.stringify(value)} is not available in R1; no run record or provider activity occurred; use adapter-simulated`
   );
+}
+
+function variantString(
+  variant: Readonly<Record<string, unknown>>,
+  field: "adapter" | "model"
+): string {
+  const value = variant[field];
+  if (typeof value !== "string" || value.length === 0) {
+    throw new AssayError(
+      "internal_invariant",
+      `internal_invariant: validated variant field ${field} is not a non-empty string`
+    );
+  }
+  return value;
+}
+
+function optionalVariantString(
+  variant: Readonly<Record<string, unknown>>,
+  field: "prompt_version" | "toolset_version" | "agent_version"
+): string | null {
+  const value = variant[field];
+  if (value === undefined) return null;
+  if (typeof value !== "string" || value.length === 0) {
+    throw new AssayError(
+      "internal_invariant",
+      `internal_invariant: validated variant field ${field} is not a non-empty string`
+    );
+  }
+  return value;
+}
+
+function projectRelativePath(projectRoot: string, absolutePath: string): string {
+  const path = relative(projectRoot, absolutePath).split(sep).join("/");
+  if (path.length === 0 || path === ".." || path.startsWith("../")) {
+    throw new AssayError(
+      "internal_invariant",
+      "internal_invariant: resolved suite path is not project-relative; no run record was written; repair suite containment"
+    );
+  }
+  return path;
 }
 
 function deriveSeed(rootSeed: number, taskContentHash: string, repetition: number): string {
@@ -849,7 +892,13 @@ export async function executeRunCommand(
   const variantAdapter = variant["adapter"];
   const selectedAdapter = invocation.adapter ?? variantAdapter ?? resolvedConfig.config.defaultAdapter;
   const adapter = normalizedAdapterId(selectedAdapter);
-  const model = typeof variant["model"] === "string" ? variant["model"] : null;
+  const adapterDescriptor = SIMULATED_ADAPTER_DESCRIPTOR;
+  if (adapterDescriptor.id !== adapter) {
+    throw new AssayError(
+      "internal_invariant",
+      `internal_invariant: composed descriptor ${adapterDescriptor.id} does not match selected adapter ${adapter}; nothing ran; repair the R1 composition root`
+    );
+  }
 
   if (suiteDeclaresAnyBudget(suite)) {
     throw new AssayError(
@@ -927,6 +976,8 @@ export async function executeRunCommand(
     }
   }
 
+  const canonicalProjectRoot = await realpath(runtime.projectRoot);
+
   const store = await openRunStore({
     projectRoot: runtime.projectRoot,
     storePath: resolvedConfig.config.storePath,
@@ -940,16 +991,36 @@ export async function executeRunCommand(
   try {
     const runId = await store.appendRun({
       createdAtUtc: runtime.clock.wallTime(),
-      suiteHash: createContentHash(suite.source.suiteContentHash),
-      variant: createVariantName(invocation.variant),
-      adapterId: adapter,
-      adapterVersion: "1.0.0",
-      modelId: model,
-      seed: invocationRootSeed,
+      suitePath: projectRelativePath(canonicalProjectRoot, suite.source.suite.path),
+      suiteContentHash: createContentHash(suite.source.suiteContentHash),
+      tasks: taskPolicies.map((policy) => ({
+        taskId: createTaskId(policy.task.id),
+        taskContentHash: createContentHash(policy.task.source.contentHash),
+        repetitions: policy.repetitions,
+        rootSeed: policy.rootSeed,
+        seedStrategy: policy.seedStrategy,
+        effectiveSeeds: policy.effectiveSeeds
+      })),
+      variant: {
+        name: createVariantName(invocation.variant),
+        adapter: variantString(variant, "adapter"),
+        model: variantString(variant, "model"),
+        promptVersion: optionalVariantString(variant, "prompt_version"),
+        toolsetVersion: optionalVariantString(variant, "toolset_version"),
+        agentVersion: optionalVariantString(variant, "agent_version")
+      },
+      configHash: createContentHash(resolvedConfig.configHash),
+      adapterId: adapterDescriptor.id,
+      adapterVersion: adapterDescriptor.version,
+      contractVersion: adapterDescriptor.contractVersion,
+      adapterTier: adapterDescriptor.tier,
+      providerReportedModel: adapterDescriptor.model,
+      rootSeed: invocationRootSeed,
       harnessVersion: HARNESS_VERSION,
+      pricingCatalogVersion: resolvedConfig.config.pricingCatalogVersion,
       runsPerTask: configuredRunsPerTask,
       status: "in_progress",
-      isolation: "unsafe_host"
+      isolationLabel: "unsafe_host"
     });
     await appendEventBatch(store, runId, [event("RunPlanned", runId, runtime.clock.wallTime(), {
       suiteContentHash: suite.source.suiteContentHash,
@@ -1038,7 +1109,9 @@ export async function executeRunCommand(
           const taskRunId = await store.appendTaskRunWithEvents(runId, {
             taskId: createTaskId(plan.task.id),
             taskContentHash: createContentHash(plan.task.source.contentHash),
-            attempt: plan.repetition,
+            repetition: plan.repetition,
+            attempt: 0,
+            seed: plan.seed,
             state: persistedState(lifecycle),
             outcome: lifecycle.outcome,
             errorCategory: lifecycle.errorCategory,

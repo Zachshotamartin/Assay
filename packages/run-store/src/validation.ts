@@ -21,23 +21,48 @@ const EXACT_TIMESTAMP = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/u;
 const RUN_KEYS = new Set([
   "runId",
   "createdAtUtc",
-  "suiteHash",
+  "suitePath",
+  "suiteContentHash",
+  "tasks",
   "variant",
+  "configHash",
   "adapterId",
   "adapterVersion",
-  "modelId",
-  "seed",
+  "contractVersion",
+  "adapterTier",
+  "providerReportedModel",
+  "rootSeed",
   "harnessVersion",
+  "pricingCatalogVersion",
   "runsPerTask",
   "status",
-  "isolation"
+  "isolationLabel"
 ]);
+const RUN_TASK_KEYS = new Set([
+  "taskId",
+  "taskContentHash",
+  "repetitions",
+  "rootSeed",
+  "seedStrategy",
+  "effectiveSeeds"
+]);
+const VARIANT_KEYS = new Set([
+  "name",
+  "adapter",
+  "model",
+  "promptVersion",
+  "toolsetVersion",
+  "agentVersion"
+]);
+const MODEL_IDENTITY_KEYS = new Set(["provider", "model", "family"]);
 const TASK_RUN_KEYS = new Set([
   "taskRunId",
   "runId",
   "taskId",
   "taskContentHash",
+  "repetition",
   "attempt",
+  "seed",
   "state",
   "outcome",
   "errorCategory",
@@ -120,6 +145,26 @@ function safeInteger(value: unknown, label: string, minimum = 0): number {
     return reject(`${label} must be a safe integer greater than or equal to ${minimum}`);
   }
   return value as number;
+}
+
+function boundedSeed(value: unknown, label: string): number {
+  const seed = safeInteger(value, label);
+  if (seed >= 2 ** 32) {
+    return reject(`${label} must be less than 2^32`);
+  }
+  return seed;
+}
+
+function projectRelativePath(value: unknown, label: string): string {
+  const path = stringValue(value, label, 4_096);
+  if (
+    path.startsWith("/") ||
+    path.includes("\\") ||
+    path.split("/").some((segment) => segment === "" || segment === "." || segment === "..")
+  ) {
+    return reject(`${label} must be a normalized project-relative path`);
+  }
+  return path;
 }
 
 function finiteNumberOrNull(value: unknown, label: string): number | null {
@@ -226,16 +271,69 @@ export function validateRunRecordJson(recordJson: string): RunRecord {
   exactKeys(record, RUN_KEYS, "run record");
   createRunId(stringValue(record["runId"], "runId", 36));
   timestamp(record["createdAtUtc"], "createdAtUtc");
-  createContentHash(stringValue(record["suiteHash"], "suiteHash", 64));
-  createVariantName(stringValue(record["variant"], "variant", 63));
+  projectRelativePath(record["suitePath"], "suitePath");
+  createContentHash(stringValue(record["suiteContentHash"], "suiteContentHash", 64));
+  const tasks = record["tasks"];
+  if (!Array.isArray(tasks) || tasks.length < 1 || tasks.length > 100_000) {
+    reject("tasks must be a non-empty array of at most 100000 identity bindings");
+  }
+  const taskIds = new Set<string>();
+  for (let index = 0; index < tasks.length; index += 1) {
+    const label = `tasks[${index}]`;
+    const task = objectRecord(tasks[index], label);
+    exactKeys(task, RUN_TASK_KEYS, label);
+    const taskId = createTaskId(stringValue(task["taskId"], `${label}.taskId`, 63));
+    if (taskIds.has(taskId)) {
+      reject(`tasks repeats task id ${taskId}`);
+    }
+    taskIds.add(taskId);
+    createContentHash(stringValue(task["taskContentHash"], `${label}.taskContentHash`, 64));
+    const repetitions = safeInteger(task["repetitions"], `${label}.repetitions`, 1);
+    if (repetitions > 100) {
+      reject(`${label}.repetitions must be at most 100`);
+    }
+    boundedSeed(task["rootSeed"], `${label}.rootSeed`);
+    oneOf(task["seedStrategy"], ["derived", "fixed"], `${label}.seedStrategy`);
+    const effectiveSeeds = task["effectiveSeeds"];
+    if (!Array.isArray(effectiveSeeds) || effectiveSeeds.length !== repetitions) {
+      reject(`${label}.effectiveSeeds must contain exactly one seed per repetition`);
+    }
+    effectiveSeeds.forEach((seed, seedIndex) => {
+      stringValue(seed, `${label}.effectiveSeeds[${seedIndex}]`, 128);
+    });
+  }
+  const variant = objectRecord(record["variant"], "variant");
+  exactKeys(variant, VARIANT_KEYS, "variant");
+  createVariantName(stringValue(variant["name"], "variant.name", 63));
+  stringValue(variant["adapter"], "variant.adapter", 128);
+  stringValue(variant["model"], "variant.model", 256);
+  nullableString(variant["promptVersion"], "variant.promptVersion", 256);
+  nullableString(variant["toolsetVersion"], "variant.toolsetVersion", 256);
+  nullableString(variant["agentVersion"], "variant.agentVersion", 256);
+  createContentHash(stringValue(record["configHash"], "configHash", 64));
   stringValue(record["adapterId"], "adapterId", 128);
   stringValue(record["adapterVersion"], "adapterVersion", 128);
-  nullableString(record["modelId"], "modelId", 256);
-  safeInteger(record["seed"], "seed", Number.MIN_SAFE_INTEGER);
+  if (record["contractVersion"] !== "assay-adapter/1") {
+    reject("contractVersion must be assay-adapter/1");
+  }
+  oneOf(record["adapterTier"], ["full", "trajectory", "black_box"], "adapterTier");
+  if (record["providerReportedModel"] !== null) {
+    const model = objectRecord(record["providerReportedModel"], "providerReportedModel");
+    exactKeys(model, MODEL_IDENTITY_KEYS, "providerReportedModel");
+    stringValue(model["provider"], "providerReportedModel.provider", 128);
+    stringValue(model["model"], "providerReportedModel.model", 256);
+    stringValue(model["family"], "providerReportedModel.family", 128);
+  }
+  boundedSeed(record["rootSeed"], "rootSeed");
   stringValue(record["harnessVersion"], "harnessVersion", 128);
+  stringValue(record["pricingCatalogVersion"], "pricingCatalogVersion", 128);
   safeInteger(record["runsPerTask"], "runsPerTask", 1);
   oneOf(record["status"], ["in_progress", "completed", "failed", "cancelled"], "status");
-  oneOf(record["isolation"], ["container", "unsafe_host"], "isolation");
+  oneOf(
+    record["isolationLabel"],
+    ["isolated", "network_allowlisted", "unsafe_host"],
+    "isolationLabel"
+  );
   return record as unknown as RunRecord;
 }
 
@@ -246,7 +344,9 @@ export function validateTaskRunRecordJson(recordJson: string): TaskRunRecord {
   createRunId(stringValue(record["runId"], "runId", 36));
   createTaskId(stringValue(record["taskId"], "taskId", 63));
   createContentHash(stringValue(record["taskContentHash"], "taskContentHash", 64));
+  safeInteger(record["repetition"], "repetition");
   safeInteger(record["attempt"], "attempt");
+  stringValue(record["seed"], "seed", 128);
   oneOf(record["state"], TASK_RUN_STATES, "state");
   if (record["outcome"] !== null) {
     oneOf(record["outcome"], ["pass", "fail", "error"], "outcome");

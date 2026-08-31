@@ -50,7 +50,7 @@ export interface RunStoreOptions {
 }
 
 export interface RunQuery {
-  readonly suiteHash?: ContentHash;
+  readonly suiteContentHash?: ContentHash;
   readonly variant?: VariantName;
   readonly adapterId?: string;
   readonly status?: RunStatus;

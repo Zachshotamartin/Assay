@@ -7,6 +7,7 @@ import { spawn } from "node:child_process";
 import {
   createContentHash,
   createRunId,
+  createTaskId,
   createTaskRunId,
   createVariantName,
   type Clock,
@@ -57,16 +58,40 @@ function options(projectRoot: string): RunStoreOptions {
 function runRecord(): NewRunRecord {
   return {
     createdAtUtc: wallTime,
-    suiteHash: createContentHash("c".repeat(64)),
-    variant: createVariantName("baseline"),
-    adapterId: "simulated",
+    suitePath: "suites/crash.suite.yaml",
+    suiteContentHash: createContentHash("c".repeat(64)),
+    tasks: [{
+      taskId: createTaskId("task-crash"),
+      taskContentHash: createContentHash("d".repeat(64)),
+      repetitions: 1,
+      rootSeed: 23,
+      seedStrategy: "derived",
+      effectiveSeeds: ["crash-seed"]
+    }],
+    variant: {
+      name: createVariantName("baseline"),
+      adapter: "simulated",
+      model: "synthetic/scripted-v1",
+      promptVersion: null,
+      toolsetVersion: null,
+      agentVersion: null
+    },
+    configHash: createContentHash("e".repeat(64)),
+    adapterId: "adapter-simulated",
     adapterVersion: "1.0.0",
-    modelId: null,
-    seed: 23,
+    contractVersion: "assay-adapter/1",
+    adapterTier: "full",
+    providerReportedModel: {
+      provider: "synthetic",
+      model: "scripted-v1",
+      family: "synthetic"
+    },
+    rootSeed: 23,
     harnessVersion: "0.0.0",
+    pricingCatalogVersion: "catalog-v1",
     runsPerTask: 1,
     status: "completed",
-    isolation: "container"
+    isolationLabel: "isolated"
   };
 }
 
