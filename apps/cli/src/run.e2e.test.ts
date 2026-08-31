@@ -137,7 +137,13 @@ export async function check(ctx: CheckerContext): Promise<CheckerVerdict> {
     title: "Core suite",
     include: ["basic.task.yaml"],
     variants: {
-      baseline: { adapter: "simulated", model: "synthetic/scripted-v1" }
+      baseline: {
+        adapter: "simulated",
+        model: "synthetic/scripted-v1",
+        prompt_version: "prompt-v1",
+        toolset_version: "simulated/1",
+        agent_version: "adapter-simulated@1.0.0"
+      }
     }
   }), "utf8");
   if (options.config !== undefined) {
@@ -511,12 +517,31 @@ describe("R1.13 validate and run integration", () => {
     const stored = databaseRows(root);
     expect(stored.runs).toHaveLength(1);
     expect(stored.runs[0]).toMatchObject({
-      variant: "baseline",
+      suitePath: "core.suite.yaml",
+      suiteContentHash: expect.stringMatching(/^[0-9a-f]{64}$/u),
+      configHash: expect.stringMatching(/^[0-9a-f]{64}$/u),
+      variant: {
+        name: "baseline",
+        adapter: "simulated",
+        model: "synthetic/scripted-v1",
+        promptVersion: "prompt-v1",
+        toolsetVersion: "simulated/1",
+        agentVersion: "adapter-simulated@1.0.0"
+      },
       adapterId: "adapter-simulated",
-      modelId: "synthetic/scripted-v1",
-      seed: 7,
+      adapterVersion: "1.0.0",
+      contractVersion: "assay-adapter/1",
+      adapterTier: "full",
+      providerReportedModel: {
+        provider: "synthetic",
+        model: "scripted-v1",
+        family: "synthetic"
+      },
+      rootSeed: 7,
+      harnessVersion: "0.0.0",
+      pricingCatalogVersion: "catalog-v1",
       runsPerTask: 2,
-      isolation: "unsafe_host",
+      isolationLabel: "unsafe_host",
       status: "completed"
     });
     expect(stored.taskRuns).toHaveLength(2);
@@ -532,6 +557,34 @@ describe("R1.13 validate and run integration", () => {
         providerReportedCostUsd: 0
       })
     })));
+    const boundTasks = stored.runs[0]!["tasks"] as readonly Readonly<Record<string, unknown>>[];
+    expect(boundTasks).toEqual([{
+      taskId: "basic-task",
+      taskContentHash: stored.taskRuns[0]!["taskContentHash"],
+      repetitions: 2,
+      rootSeed: 7,
+      seedStrategy: "derived",
+      effectiveSeeds: [
+        effectiveSeed(7, String(stored.taskRuns[0]!["taskContentHash"]), 0),
+        effectiveSeed(7, String(stored.taskRuns[0]!["taskContentHash"]), 1)
+      ]
+    }]);
+    expect(stored.taskRuns.map((record) => ({
+      repetition: record["repetition"],
+      attempt: record["attempt"],
+      seed: record["seed"]
+    }))).toEqual([
+      {
+        repetition: 0,
+        attempt: 0,
+        seed: effectiveSeed(7, String(stored.taskRuns[0]!["taskContentHash"]), 0)
+      },
+      {
+        repetition: 1,
+        attempt: 0,
+        seed: effectiveSeed(7, String(stored.taskRuns[0]!["taskContentHash"]), 1)
+      }
+    ]);
     const firstTaskRunId = stored.taskRuns[0]!["taskRunId"];
     const lifecycleTypes = new Set([
       "FixtureMaterialized",

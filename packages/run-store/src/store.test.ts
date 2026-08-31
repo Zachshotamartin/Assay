@@ -266,6 +266,58 @@ describe("R1.12 store core", () => {
     await store.close();
   });
 
+  it("RUN-010 round-trips the complete identity binding in the canonical run row", async () => {
+    const projectRoot = await temporaryProject();
+    const store = await openRunStore(storeOptions(projectRoot));
+    const input = {
+      createdAtUtc: wallTime,
+      suitePath: "suites/core.suite.yaml",
+      suiteContentHash: createContentHash("a".repeat(64)),
+      tasks: [{
+        taskId: createTaskId("task-a"),
+        taskContentHash: createContentHash("b".repeat(64)),
+        repetitions: 2,
+        rootSeed: 42,
+        seedStrategy: "derived",
+        effectiveSeeds: ["1111111111111111", "2222222222222222"]
+      }],
+      variant: {
+        name: createVariantName("baseline"),
+        adapter: "simulated",
+        model: "synthetic/scripted-v1",
+        promptVersion: "prompt-v1",
+        toolsetVersion: "simulated/1",
+        agentVersion: "adapter-simulated@1.0.0"
+      },
+      configHash: createContentHash("c".repeat(64)),
+      adapterId: "adapter-simulated",
+      adapterVersion: "1.0.0",
+      contractVersion: "assay-adapter/1",
+      adapterTier: "full",
+      providerReportedModel: {
+        provider: "synthetic",
+        model: "scripted-v1",
+        family: "synthetic"
+      },
+      rootSeed: 42,
+      harnessVersion: "0.0.0",
+      pricingCatalogVersion: "catalog-v1",
+      runsPerTask: 2,
+      status: "completed",
+      isolationLabel: "unsafe_host"
+    } as const satisfies NewRunRecord;
+
+    const runId = await store.appendRun(input);
+
+    expect(await store.getRun(runId)).toEqual({ runId, ...input });
+    const database = rawDatabase(projectRoot);
+    const stored = database.prepare("SELECT record_json FROM runs WHERE run_id = ?")
+      .get(runId) as { readonly record_json: string };
+    database.close();
+    expect(stored.record_json).toBe(canonicalJson({ runId, ...input }));
+    await store.close();
+  });
+
   it("STO-001 commits a task-run row and its associated events as one batch", async () => {
     const projectRoot = await temporaryProject();
     const store = await openRunStore(storeOptions(projectRoot));
