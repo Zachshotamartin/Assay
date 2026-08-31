@@ -83,6 +83,23 @@ describe("R0 CI workflow contract", () => {
 });
 
 describe("R1 CI workflow contract", () => {
+  it("exposes the exact required e2e context while retaining macOS evidence [NFR-DET-004]", async () => {
+    const value = await workflow();
+
+    expect(value.jobs?.["e2e-simulated"]?.name).toBe("e2e-simulated");
+    expect(value.jobs?.["e2e-simulated"]?.["runs-on"]).toBe("ubuntu-24.04");
+    expect(value.jobs?.["e2e-simulated"]?.strategy).toBeUndefined();
+    expect(value.jobs?.["e2e-simulated-macos"]?.name).toBe(
+      "e2e-simulated-macos"
+    );
+    expect(value.jobs?.["e2e-simulated-macos"]?.["runs-on"]).toBe("macos-14");
+    expect(
+      value.jobs?.["e2e-simulated-macos"]?.steps?.some(
+        ({ run }) => run === "npm run test:reproducibility"
+      )
+    ).toBe(true);
+  });
+
   it("adds named store-core and cross-platform e2e-simulated required checks", async () => {
     const value = await workflow();
 

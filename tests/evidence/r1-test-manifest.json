@@ -96,6 +96,11 @@
       "file": "scripts/check-docs.test.ts",
       "title": "stages deferred exit-code reachability at the subsystem-owning gates [FR-RUN-010]",
       "requirementId": "FR-RUN-010"
+    },
+    {
+      "file": "scripts/ci-workflow.test.ts",
+      "title": "exposes the exact required e2e context while retaining macOS evidence [NFR-DET-004]",
+      "requirementId": "NFR-DET-004"
     }
   ]
 }
