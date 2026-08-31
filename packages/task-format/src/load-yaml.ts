@@ -1,4 +1,5 @@
 import { readFile as readFileFromDisk } from "node:fs/promises";
+import { basename } from "node:path";
 
 import { AssayError, type AssayErrorCategory } from "@assay/contracts";
 import {
@@ -39,6 +40,7 @@ export interface LoadedYaml<TDocument extends Readonly<Record<string, unknown>>>
   readonly path: string;
   readonly source: string;
   readonly document: TDocument;
+  readonly warnings?: readonly TaskFormatWarning[];
 }
 
 export interface YamlInspection<TDocument extends Readonly<Record<string, unknown>>> {
@@ -46,6 +48,15 @@ export interface YamlInspection<TDocument extends Readonly<Record<string, unknow
   readonly document: TDocument | undefined;
   readonly loaded: LoadedYaml<TDocument> | undefined;
   readonly diagnostics: readonly TaskFormatError[];
+  readonly warnings: readonly TaskFormatWarning[];
+}
+
+export interface TaskFormatWarning {
+  readonly code: "task_warning/id-file-name-mismatch";
+  readonly filePath: string;
+  readonly yamlPath: "$.id";
+  readonly message: string;
+  readonly remedy: string;
 }
 
 export interface TaskFormatDiagnostic {
@@ -93,6 +104,26 @@ const DEFAULT_IO: YamlLoaderIo = {
 
 function categoryFor(kind: YamlKind): YamlCategory {
   return kind === "suite" ? "suite_invalid" : "task_invalid";
+}
+
+function warningsFor(
+  kind: YamlKind,
+  filePath: string,
+  document: Readonly<Record<string, unknown>>
+): readonly TaskFormatWarning[] {
+  if (kind !== "task" || !filePath.endsWith(".task.yaml")) return [];
+  const id = document["id"];
+  if (typeof id !== "string") return [];
+  const fileName = basename(filePath);
+  const fileStem = fileName.slice(0, -".task.yaml".length);
+  if (fileStem === id) return [];
+  return [{
+    code: "task_warning/id-file-name-mismatch",
+    filePath,
+    yamlPath: "$.id",
+    message: `task id ${id} differs from file basename ${fileStem}`,
+    remedy: `Rename the task file to ${id}.task.yaml or change its id intentionally.`
+  }];
 }
 
 function failure(
@@ -389,7 +420,8 @@ function inspectAndValidate(
         source: undefined,
         document: undefined,
         loaded: undefined,
-        diagnostics: [cause]
+        diagnostics: [cause],
+        warnings: []
       };
     }
     throw cause;
@@ -422,14 +454,16 @@ function inspectAndValidate(
     }
   }
   if (kind === "rubric") diagnostics.push(...rubricRuleDiagnostics(parsed, filePath));
+  const warnings = diagnostics.length === 0 ? warningsFor(kind, filePath, parsed.value) : [];
   const loaded = diagnostics.length === 0
-    ? { path: filePath, source: parsed.source, document: parsed.value }
+    ? { path: filePath, source: parsed.source, document: parsed.value, warnings }
     : undefined;
   return {
     source: parsed.source,
     document: parsed.value,
     loaded,
-    diagnostics
+    diagnostics,
+    warnings
   };
 }
 
