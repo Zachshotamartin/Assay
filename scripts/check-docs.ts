@@ -15,7 +15,10 @@ export type DocumentationViolationCode =
   | "gate-status-missing"
   | "invalid-status"
   | "forbidden-install-command"
-  | "forbidden-present-claim";
+  | "forbidden-present-claim"
+  | "r1-quickstart-command-missing"
+  | "r1-boundary-statement-missing"
+  | "r1-status-claim-invalid";
 
 export interface DocumentationViolation {
   readonly code: DocumentationViolationCode;
@@ -42,6 +45,33 @@ const PRESENT_CLAIMS = [
   /\bAssay is implemented\b/iu,
   /\bAssay is available today\b/iu,
   /\bAssay now supports\b/iu
+] as const;
+const R1_IN_PROGRESS_CLAIM =
+  "Assay is under implementation. Gates R0 and R1 have code and local evidence on gate branches, but neither is accepted: R0 is blocked by unavailable private-repository branch protection and review controls on the current GitHub plan, and R1 depends on accepted R0. No product gate is accepted.";
+const R1_QUICKSTART_HEADING = "Source-checkout R1 Preview (Unaccepted)";
+const R1_QUICKSTART_COMMANDS = [
+  "npm ci --ignore-scripts",
+  "npm run build",
+  "node apps/cli/dist/bin.js validate fixtures/suites/reference",
+  "node apps/cli/dist/bin.js run fixtures/suites/reference.suite.yaml --variant baseline --adapter simulated -n 10 --seed 42"
+] as const;
+const R1_BOUNDARY_STATEMENTS = [
+  {
+    name: "source-only",
+    text: "source-only preview evidence, not a published install or an acceptance claim"
+  },
+  {
+    name: "no-isolation",
+    text: "R1 has no sandbox or isolation boundary."
+  },
+  {
+    name: "unsafe-host",
+    text: "Every R1 execution is durable `unsafe_host` evidence and prints the unsafe-host warning"
+  },
+  {
+    name: "no-real-agent-provider",
+    text: "No real agent or provider is supported"
+  }
 ] as const;
 
 function asRecord(value: unknown, label: string): Record<string, unknown> {
@@ -163,6 +193,89 @@ function checkCurrentClaim(
     1,
     "verbatim current-claim blockquote is missing"
   );
+}
+
+interface MarkdownSection {
+  readonly source: string;
+  readonly line: number;
+}
+
+function levelTwoSection(source: string, heading: string): MarkdownSection | undefined {
+  const lines = source.split(/\r?\n/u);
+  const headingText = `## ${heading}`;
+  const start = lines.findIndex((line) => line.trim() === headingText);
+  if (start < 0) return undefined;
+  let end = lines.length;
+  for (let index = start + 1; index < lines.length; index += 1) {
+    if (/^##\s+/u.test((lines[index] ?? "").trimStart())) {
+      end = index;
+      break;
+    }
+  }
+  return {
+    source: lines.slice(start + 1, end).join("\n"),
+    line: start + 1
+  };
+}
+
+function hasExactR1ShellBlock(source: string): boolean {
+  const lines = source.split(/\r?\n/u);
+  for (let index = 0; index < lines.length; index += 1) {
+    if ((lines[index] ?? "").trim() !== "```sh") continue;
+    const closingOffset = lines.slice(index + 1).findIndex((line) => line.trim() === "```");
+    if (closingOffset < 0) return false;
+    const closing = index + 1 + closingOffset;
+    if (lines.slice(index + 1, closing).join("\n") === R1_QUICKSTART_COMMANDS.join("\n")) {
+      return true;
+    }
+    index = closing;
+  }
+  return false;
+}
+
+function checkR1InProgressClaim(
+  configuration: StatusConfiguration
+): DocumentationViolation | undefined {
+  if (
+    configuration.gates.R1 === "in progress" &&
+    configuration.currentClaim !== R1_IN_PROGRESS_CLAIM
+  ) {
+    return violation(
+      "r1-status-claim-invalid",
+      "docs/status.yaml",
+      1,
+      "R1 in-progress status must retain the exact synchronized unaccepted-gate claim"
+    );
+  }
+  return undefined;
+}
+
+function checkR1Quickstart(
+  source: string,
+  configuration: StatusConfiguration
+): DocumentationViolation | undefined {
+  if (configuration.gates.R1 !== "in progress") return undefined;
+  const section = levelTwoSection(source, R1_QUICKSTART_HEADING);
+  if (section === undefined || !hasExactR1ShellBlock(section.source)) {
+    return violation(
+      "r1-quickstart-command-missing",
+      "README.md",
+      section?.line ?? 1,
+      "R1 in-progress documentation must retain the exact source-checkout build, validate, and deterministic simulated-run command block"
+    );
+  }
+  const normalized = section.source.replace(/\s+/gu, " ").trim();
+  for (const boundary of R1_BOUNDARY_STATEMENTS) {
+    if (!normalized.includes(boundary.text)) {
+      return violation(
+        "r1-boundary-statement-missing",
+        "README.md",
+        section.line,
+        `R1 quickstart is missing the required ${boundary.name} boundary statement`
+      );
+    }
+  }
+  return undefined;
 }
 
 function tableStatuses(
@@ -337,6 +450,11 @@ export async function inspectDocumentation(rootDir: string): Promise<readonly Do
     return [violation("status-file-invalid", "docs/status.yaml", 1, message)];
   }
 
+  const r1ClaimIssue = checkR1InProgressClaim(configuration);
+  if (r1ClaimIssue !== undefined) {
+    return [r1ClaimIssue];
+  }
+
   for (const file of configuration.claimDocuments) {
     const issue = checkCurrentClaim(
       file,
@@ -366,6 +484,14 @@ export async function inspectDocumentation(rootDir: string): Promise<readonly Do
   );
   if (buildPlanIssue !== undefined) {
     return [buildPlanIssue];
+  }
+
+  const r1QuickstartIssue = checkR1Quickstart(
+    await readFile(resolve(absoluteRoot, "README.md"), "utf8"),
+    configuration
+  );
+  if (r1QuickstartIssue !== undefined) {
+    return [r1QuickstartIssue];
   }
 
   for (const file of await markdownDocuments(absoluteRoot)) {
