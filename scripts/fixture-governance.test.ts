@@ -1,4 +1,4 @@
-import { appendFile, cp, mkdtemp, readFile, rm } from "node:fs/promises";
+import { appendFile, cp, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 
@@ -74,6 +74,21 @@ describe("NFR-MAINT-005 non-golden R1 fixture governance", () => {
       join(repositoryRoot, "packages", "run-store", "src", "fixtures", "crash-writer.ts"),
       "utf8"
     )).resolves.toContain("openRunStore");
+  });
+
+  it("NFR-MAINT-005 fails closed on newly introduced package-local fixture data", async () => {
+    const temporaryRoot = await mkdtemp(join(tmpdir(), "assay-stray-fixture-"));
+    temporaryRoots.push(temporaryRoot);
+    const strayDirectory = join(temporaryRoot, "packages", "example", "src", "fixtures");
+    await mkdir(strayDirectory, { recursive: true });
+    await writeFile(join(strayDirectory, "data.json"), "{}\n", "utf8");
+
+    await expect(findPackageLocalFixtureCorpora(temporaryRoot)).resolves.toEqual([
+      "packages/example/src/fixtures"
+    ]);
+    await expect(verifyR1FixtureGovernance(temporaryRoot)).rejects.toThrow(
+      /product data fixture corpora must live under fixtures\/.*packages\/example\/src\/fixtures/u
+    );
   });
 
   it("fails closed when a governed fixture changes without refreshed metadata", async () => {
