@@ -1,0 +1,21 @@
+current_claim: >-
+  Assay is under implementation. Gates R0 and R1 have code and local evidence on gate branches, but neither is accepted: R0 is blocked by unavailable private-repository branch protection and review controls on the current GitHub plan, and R1 depends on accepted R0. No product gate is accepted.
+claim_documents:
+  - README.md
+  - docs/BUILD_PLAN.md
+status_table_documents:
+  - README.md
+build_plan_document: docs/BUILD_PLAN.md
+planned_install_sections: {}
+gates:
+  R0: in progress
+  R1: in progress
+  R2: planned
+  R3: planned
+  R4: planned
+  R5: planned
+  R6: planned
+  R7: planned
+  R8: planned
+  R9: planned
+  R10: planned
