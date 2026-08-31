@@ -195,11 +195,42 @@ jobs:
 
   e2e-simulated:
     name: e2e-simulated
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-24.04, macos-14]
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      GOLDEN_POLICY_BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+      GOLDEN_POLICY_REVIEW_TEXT: ${{ github.event.pull_request.body || github.event.head_commit.message || '' }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Set up pinned Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version-file: .node-version
+          cache: npm
+      - name: Install from lockfile
+        run: npm ci --ignore-scripts
+      - name: Build packaged CLI
+        run: npm run build
+      - name: Verify governed fixture manifests
+        run: npm run check:fixtures
+      - name: Validate the R1 reference corpus
+        run: node apps/cli/dist/bin.js validate fixtures/suites/reference
+      - name: Run the R1 simulated reference suite
+        run: node apps/cli/dist/bin.js run fixtures/suites/reference.suite.yaml --variant baseline --adapter simulated -n 10 --seed 42
+      - name: Run simulated end-to-end tests
+        run: npm run test:e2e:simulated
+      - name: Compare canonical reference-run bytes
+        run: npm run test:reproducibility
+      - name: Enforce semantic golden review
+        run: npm run check:goldens
+
+  e2e-simulated-macos:
+    name: e2e-simulated-macos
+    runs-on: macos-14
     timeout-minutes: 15
     env:
       GOLDEN_POLICY_BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}

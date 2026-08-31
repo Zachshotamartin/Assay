@@ -152,10 +152,12 @@ describe("R1.14 byte reproducibility", () => {
         readonly steps?: readonly { readonly run?: string }[];
       }>>;
     };
-    const e2e = workflow.jobs?.["e2e-simulated"];
-    expect(e2e?.strategy?.matrix?.["os"]).toEqual(["ubuntu-24.04", "macos-14"]);
-    expect(e2e?.steps?.some(({ run }) => run === "npm run test:reproducibility")).toBe(true);
-    expect(e2e?.steps?.some(({ run }) => run === "npm run check:goldens")).toBe(true);
+    const e2eLinux = workflow.jobs?.["e2e-simulated"];
+    const e2eMacos = workflow.jobs?.["e2e-simulated-macos"];
+    for (const e2e of [e2eLinux, e2eMacos]) {
+      expect(e2e?.steps?.some(({ run }) => run === "npm run test:reproducibility")).toBe(true);
+      expect(e2e?.steps?.some(({ run }) => run === "npm run check:goldens")).toBe(true);
+    }
 
     expect(() => assertGoldenReview([REFERENCE_GOLDEN_RELATIVE_PATH], "missing note"))
       .toThrow(/semantic review/u);

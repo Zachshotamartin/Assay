@@ -106,11 +106,11 @@ describe("R1 CI workflow contract", () => {
     expect(value.jobs?.["store-core"]?.name).toBe("store-core");
     expect(value.jobs?.["store-core"]?.["runs-on"]).toBe("ubuntu-24.04");
     expect(value.jobs?.["e2e-simulated"]?.name).toBe("e2e-simulated");
-    expect(value.jobs?.["e2e-simulated"]?.["runs-on"]).toBe("${{ matrix.os }}");
-    expect(value.jobs?.["e2e-simulated"]?.strategy?.matrix?.["os"]).toEqual([
-      "ubuntu-24.04",
-      "macos-14"
-    ]);
+    expect(value.jobs?.["e2e-simulated"]?.["runs-on"]).toBe("ubuntu-24.04");
+    expect(value.jobs?.["e2e-simulated-macos"]?.name).toBe(
+      "e2e-simulated-macos"
+    );
+    expect(value.jobs?.["e2e-simulated-macos"]?.["runs-on"]).toBe("macos-14");
   });
 
   it("enforces the golden semantic-review policy in CI", async () => {
