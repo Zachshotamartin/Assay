@@ -4,6 +4,9 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 const settingsDirectory = fileURLToPath(new URL("../.github/settings/", import.meta.url));
+const operationsPath = fileURLToPath(
+  new URL("../docs/OPERATIONS_TEST_PLAN.md", import.meta.url)
+);
 
 async function setting(name: string): Promise<Record<string, unknown>> {
   return JSON.parse(await readFile(`${settingsDirectory}/${name}.json`, "utf8")) as Record<
@@ -79,5 +82,20 @@ describe("GitHub governance payloads", () => {
       bypass_actors: [],
       conditions: { ref_name: { include: ["refs/tags/v*"], exclude: [] } }
     });
+  });
+
+  it("retains PR semantic-review evidence in squash commits [NFR-MAINT-005]", async () => {
+    await expect(setting("repository")).resolves.toEqual({
+      allow_merge_commit: false,
+      allow_rebase_merge: false,
+      allow_squash_merge: true,
+      squash_merge_commit_title: "PR_TITLE",
+      squash_merge_commit_message: "PR_BODY",
+      delete_branch_on_merge: true
+    });
+
+    await expect(readFile(operationsPath, "utf8")).resolves.toContain(
+      "`Golden semantic review:` line from the pull-request body"
+    );
   });
 });
