@@ -19,23 +19,22 @@ deterministic synthetic agent for zero dollars.**
 
 ## Implementation Status
 
-> Assay is under implementation. Gate R0 code and CI evidence exist on an
-> open pull request, but R0 is not accepted because required private-repository
-> branch protection and review controls are unavailable on the current GitHub
-> plan. No later product gate is accepted.
+> Assay is under implementation. Gate R0 is accepted with repository,
+> toolchain, CI, and GitHub governance evidence. Gates R1 through R10 remain
+> planned. No product gate beyond the repository substrate is accepted.
 
 The product commands, metrics, and evaluation guarantees in this README remain
 planned. The table below is the complete honest inventory.
 
 | Area | Exists now | Planned |
 | --- | --- | --- |
-| Documentation | The normative set plus an R0 docs/status checker on the open gate branch | Gate-by-gate current-versus-planned updates |
-| Code | R0 Node 22 workspace skeleton, contracts, schemas, and tests on the open gate branch; no evaluation runner | Product packages added only by their owning gates |
-| CLI | Bootstrap `--help` and `--version` only on the open gate branch; product commands reject | `assay init/validate/run/compare/report/matrix/judge/view/gc/db/export/delete/doctor/redact-check` |
+| Documentation | The normative set plus an accepted R0 docs/status checker | Gate-by-gate current-versus-planned updates |
+| Code | Accepted R0 Node 22 workspace skeleton, contracts, schemas, and tests; no evaluation runner | Product packages added only by their owning gates |
+| CLI | Accepted bootstrap `--help` and `--version`; product commands reject | `assay init/validate/run/compare/report/matrix/judge/view/gc/db/export/delete/doctor/redact-check` |
 | Sandbox | None | Per-run OCI containers, no network by default, guaranteed cleanup (ADR-0004) |
 | Statistics | None | Wilson intervals, exact tests, FDR control, seeded bootstrap, MDE reporting (ADR-0006) |
-| CI integration | Deterministic R0 branch CI is green; required private-repo protection is plan-blocked | GitHub Action posting a delta table and blocking on regression (R8) |
-| Evidence | R0 local and branch-CI evidence exists, but R0 is not accepted | Gate-by-gate acceptance evidence per `docs/BUILD_PLAN.md` |
+| CI integration | Deterministic R0 CI, protected-main checks, review rules, release approval, and immutable version tags are active | GitHub Action posting a delta table and blocking on regression (R8) |
+| Evidence | R0 is accepted with local, branch-CI, and live GitHub-governance evidence | Gate-by-gate acceptance evidence per `docs/BUILD_PLAN.md` |
 
 ## Landscape
 
@@ -152,13 +151,13 @@ a distinct failure with its own exit code, never folded into quality.
 
 ## Release Gates
 
-The build plan defines eleven gates. Each unlocks specific evidence; R0 is in
-progress and no gate is accepted. The full definitions, tickets, and dependency edges are in
+The build plan defines eleven gates. Each unlocks specific evidence; R0 is
+accepted and R1 through R10 remain planned. The full definitions, tickets, and dependency edges are in
 [docs/BUILD_PLAN.md](docs/BUILD_PLAN.md).
 
 | Gate | Title | Evidence unlocked | Status |
 | --- | --- | --- | --- |
-| R0 | Repository, toolchain, and CI identity | Repository, toolchain, CI, and architecture checks exist and are green. | in progress |
+| R0 | Repository, toolchain, and CI identity | Repository, toolchain, CI, and architecture checks exist and are green. | accepted |
 | R1 | Task format, runner, and deterministic assertions | A suite runs against the simulated agent and produces a byte-reproducible result. | planned |
 | R2 | Sandboxed execution | Fixtures materialize in an isolated container with enforced limits and guaranteed cleanup, even after a killed run. | planned |
 | R3 | Real providers, BYOK, and usage accounting | A real provider runs through BYOK with token, cost, and latency accounting reconciled against provider-reported usage. | planned |

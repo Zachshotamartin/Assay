@@ -25,10 +25,9 @@ R0-R10 release evidence.
 
 Current baseline, stated verbatim wherever the current state is described:
 
-> Assay is under implementation. Gate R0 code and CI evidence exist on an
-> open pull request, but R0 is not accepted because required private-repository
-> branch protection and review controls are unavailable on the current GitHub
-> plan. No later product gate is accepted.
+> Assay is under implementation. Gate R0 is accepted with repository,
+> toolchain, CI, and GitHub governance evidence. Gates R1 through R10 remain
+> planned. No product gate beyond the repository substrate is accepted.
 
 Assay's default architecture is one local CLI process (`assay`) operating on a
 project checkout, a per-project SQLite-plus-blob trace store under `.assay/`,

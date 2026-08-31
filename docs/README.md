@@ -9,10 +9,9 @@ stochastic comparison as a statistics problem, refusing to call a difference a
 regression without a significance test, confidence intervals, and stated
 power.
 
-> Assay is under implementation. Gate R0 code and CI evidence exist on an
-> open pull request, but R0 is not accepted because required private-repository
-> branch protection and review controls are unavailable on the current GitHub
-> plan. No later product gate is accepted.
+> Assay is under implementation. Gate R0 is accepted with repository,
+> toolchain, CI, and GitHub governance evidence. Gates R1 through R10 remain
+> planned. No product gate beyond the repository substrate is accepted.
 
 The root [README](../README.md) is the quick orientation and current
 implementation snapshot. It states the honest status, the planned command
@@ -124,7 +123,8 @@ means implemented on mainline and backed by its named automated gate. **In
 progress** means present on a branch and never a release claim. **Planned**
 means specified, not implemented. **Deferred** means outside the named phase
 and forbidden as completion evidence. A package, type, stub, or happy-path
-unit test is never completion. Today every gate is planned.
+unit test is never completion. Today R0 is accepted and every later gate is
+planned.
 
 ## Requirements and Evidence
 
@@ -150,9 +150,8 @@ Documentation must follow these rules:
   boundary and the escape tests that defend it.
 - Record a product or architecture reversal in a new ADR instead of silently
   editing away the earlier decision.
-- Describe the current state only with this claim, verbatim: Assay is a
-  fully specified, unimplemented evaluation harness. This repository
-  currently contains normative planning documents only. No command, gate,
-  or measurement described here exists yet.
+- Describe the current state only with the verbatim claim recorded in
+  `docs/status.yaml`; the documentation checker enforces it across every
+  governed claim document.
 
 Last revised: 2026-08-30.

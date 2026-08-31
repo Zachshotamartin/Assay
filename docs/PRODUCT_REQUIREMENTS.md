@@ -3,11 +3,11 @@
 Document status: normative product specification for the Assay evaluation
 harness. Last revised: 2026-08-30.
 
-Implementation status: Assay is a fully specified, unimplemented evaluation
-harness. This repository currently contains normative planning documents only.
-No command, gate, or measurement described here exists yet.
+Implementation status: the R0 repository, toolchain, CI, and governance
+substrate is accepted. The evaluation harness remains unimplemented; no
+product command, measurement, or later gate is accepted yet.
 
-Every capability described below is `planned`. A capability becomes claimable
+Every product capability described below is `planned`. A capability becomes claimable
 only when its owning release gate in [BUILD_PLAN.md](./BUILD_PLAN.md) names
 passing evidence. Statistical definitions and result wording are controlled by
 [METHODOLOGY.md](./METHODOLOGY.md); component boundaries by
@@ -1253,10 +1253,9 @@ has not been accepted.
 
 Current state, stated verbatim wherever the current state is described:
 
-> Assay is under implementation. Gate R0 code and CI evidence exist on an
-> open pull request, but R0 is not accepted because required private-repository
-> branch protection and review controls are unavailable on the current GitHub
-> plan. No later product gate is accepted.
+> Assay is under implementation. Gate R0 is accepted with repository,
+> toolchain, CI, and GitHub governance evidence. Gates R1 through R10 remain
+> planned. No product gate beyond the repository substrate is accepted.
 
 ### 12.1 R0 — Repository, toolchain, and CI identity
 
