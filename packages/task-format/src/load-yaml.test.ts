@@ -70,6 +70,30 @@ describe("bounded safe YAML loading", () => {
     }
   });
 
+  it("rejects bounded hostile alias expansion as inert task_invalid input", () => {
+    const aliases = (anchor: string): string =>
+      Array.from({ length: 10 }, () => `*${anchor}`).join(", ");
+    const hostile = new TextEncoder().encode(
+      'format_version: "1.0"\n' +
+      'id: hostile-aliases\n' +
+      'abstract: true\n' +
+      'seed: &seed ["synthetic", "synthetic", "synthetic", "synthetic", "synthetic"]\n' +
+      `level_one: &level_one [${aliases("seed")}]\n` +
+      `level_two: &level_two [${aliases("level_one")}]\n` +
+      `level_three: [${aliases("level_two")}]\n`
+    );
+
+    expect(() => parseTaskBytes(hostile, "/project/hostile-aliases.task.yaml"))
+      .toThrowError(expect.objectContaining({
+        category: "task_invalid",
+        code: "task_invalid/yaml-parse",
+        filePath: "/project/hostile-aliases.task.yaml",
+        line: 1,
+        column: 1,
+        remedy: expect.stringContaining("100 aliases")
+      }));
+  });
+
   it("rejects non-UTF-8 and over-limit files before parsing", () => {
     expect(() =>
       parseTaskBytes(Uint8Array.of(0xc3, 0x28), "/project/invalid.task.yaml")
