@@ -935,12 +935,12 @@ and must not pass silently.
 
 ### 5.4 Deterministic ordering
 
-The resolved task set is ordered by task id (matrix instance id for
-expanded instances) in ascending UTF-8 byte order. Duplicate ids across the
-whole resolved set are `suite_invalid` (§3.2). This ordering is the
-execution planning order and the report row order (FR-TASK-006). Parallel
-execution may complete out of order; ordering here fixes identity, not
-scheduling.
+The resolved task set is ordered first by its resolved project-relative
+source path and then by task id (matrix instance id for expanded instances),
+each in ascending UTF-8 byte order. Duplicate ids across the whole resolved
+set are `suite_invalid` (§3.2). This ordering is the execution planning order
+and the report row order (FR-TASK-006). Parallel execution may complete out
+of order; ordering here fixes identity, not scheduling.
 
 ### 5.5 Suite budgets and spend ceiling
 
