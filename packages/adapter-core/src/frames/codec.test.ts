@@ -13,7 +13,7 @@ import {
 } from "./codec.js";
 import { MAX_ADAPTER_STRING_BYTES } from "./line-splitter.js";
 
-const fixtureRoot = new URL("./fixtures/", import.meta.url);
+const fixtureRoot = new URL("../../../../fixtures/adapter-frames/", import.meta.url);
 
 function fixture(group: "accept" | "reject", name: string): string {
   return readFileSync(new URL(`${group}/${name}`, fixtureRoot), "utf8").trimEnd();

@@ -15,6 +15,9 @@ published schema and refresh only its manifest:
 npm run fixtures:manifest -- fixtures/repos
 npm run fixtures:manifest -- fixtures/suites/reference
 npm run fixtures:manifest -- fixtures/trajectories
+npm run fixtures:manifest -- fixtures/task-format
+npm run fixtures:manifest -- fixtures/adapter-frames
+npm run fixtures:manifest -- fixtures/contract-events
 npm run check:fixtures
 ```
 

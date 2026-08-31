@@ -1,0 +1,113 @@
+{
+  "fixtureSchema": "assay-fixture-directory/1",
+  "generatorVersion": "r1-fixtures/1",
+  "fixtureId": "r1-task-format-corpus",
+  "fixtureKind": "task-format",
+  "manifestRoot": "fixtures/task-format",
+  "contentHash": "sha256:a97605306db2b644842718c6c101d73664a71850c42419bab58cdc7524093a37",
+  "manifest": [
+    {
+      "path": "matrices/collision.matrix.yaml",
+      "sha256": "061e1847cf424ac90579276fb63ed8e07ae1f0229dcd6fbde011e985604b25e6"
+    },
+    {
+      "path": "schemas/accept/abstract.task.yaml",
+      "sha256": "75d89dcbee6890f7701b96bba23187539aba67f810e8d7c57c781d1af3cc8d55"
+    },
+    {
+      "path": "schemas/accept/every-field.suite.yaml",
+      "sha256": "03c1f22e65ea2ee70ff5923b93168c7f7d56c20fe3692d533cd85fafb52d346f"
+    },
+    {
+      "path": "schemas/accept/every-field.task.yaml",
+      "sha256": "5fd1dce4aee06ff51dee77b00b1c6e9d9cf9c6feba2462cb8156242886d63ec5"
+    },
+    {
+      "path": "schemas/reject/invalid-alpha.suite.yaml",
+      "sha256": "3d964f8a95f347b1788812260b073fce36529edbbcb3f914b88110cc2c209a30"
+    },
+    {
+      "path": "schemas/reject/invalid-assertion-field.task.yaml",
+      "sha256": "2615b02fa8ed5164eb56e359fc053531747c16c64e92cf89212f0056284a1800"
+    },
+    {
+      "path": "schemas/reject/invalid-budget-scope.suite.yaml",
+      "sha256": "1f4229d79caf631a855f89824aa874f3c1eafb9a102c04f587f9fc7a48f56471"
+    },
+    {
+      "path": "schemas/reject/invalid-fixture-choice.task.yaml",
+      "sha256": "882945982c78bedced1d0bd45e488c32948e844c4a203179aff4210d365b03cb"
+    },
+    {
+      "path": "schemas/reject/unknown-major.suite.yaml",
+      "sha256": "5d6b228a57a6675874b32ced33e5293f87ac6c88efb892ddef6faaa6779b1439"
+    },
+    {
+      "path": "schemas/reject/unknown-major.task.yaml",
+      "sha256": "2ebcf0ca9c1fe62103e9ddde9d5ec0e4e7d7619f74d391fda0a74823ad4c5464"
+    },
+    {
+      "path": "schemas/reject/unknown-nested.suite.yaml",
+      "sha256": "84125e55ad73263545d769ab40f5c8c1d9f0214c03c8844ef9c665a3a01899f9"
+    },
+    {
+      "path": "schemas/reject/unknown-nested.task.yaml",
+      "sha256": "bb9ae270ae8274f69f1ce4d266488674de6c54c229cb48ab1b90e9115cf2e2a7"
+    },
+    {
+      "path": "schemas/reject/unknown-top-level.suite.yaml",
+      "sha256": "e78a1576ab7c54a0babb6973d1ac3da59e3e607ec652f24ee42a9319d9ac863b"
+    },
+    {
+      "path": "schemas/reject/unknown-top-level.task.yaml",
+      "sha256": "9befaadc1eb23baa2144cfab91bc154d0579cb2f4bbeeae3051a5b8b2b60d49d"
+    },
+    {
+      "path": "suite-resolution/core.suite.yaml",
+      "sha256": "1bf3224a6bc31d7f01ea6ab72f486592400134039335d92deacd305689adf53b"
+    },
+    {
+      "path": "suite-resolution/tasks/a/zeta.task.yaml",
+      "sha256": "44cc916ccbe3856e88f1c52b99537f81217586f411fef785ad73710ebe250cb2"
+    },
+    {
+      "path": "suite-resolution/tasks/z/alpha.task.yaml",
+      "sha256": "4c3658c0495e5bb795773fccc11390cfffcac93d60bdf30c3d729c67f3e556d6"
+    },
+    {
+      "path": "suite-resolution/tasks/z/skipped.task.yaml",
+      "sha256": "100188cb8f11bcce77c902c96c7a127a083b565226ddb4e3ed4f09135de08f56"
+    }
+  ],
+  "suites": [],
+  "consumers": [
+    "packages/task-format/src/load-yaml.test.ts",
+    "packages/task-format/src/matrix.test.ts",
+    "packages/task-format/src/resolve-suite.test.ts",
+    "packages/task-format/src/schemas/schema-corpus.test.ts",
+    "packages/task-format/src/schemas/schema-fixtures.test.ts"
+  ],
+  "assurances": {
+    "synthetic": true,
+    "containsRealCredentials": false,
+    "containsRealUserRepositories": false,
+    "containsPrivateTranscripts": false,
+    "registeredSyntheticCanaries": []
+  },
+  "provenance": {
+    "origin": "repository-authored-synthetic",
+    "source": "Assay R1 planning and test corpus",
+    "license": "MIT",
+    "capturedFromExternalSystem": false
+  },
+  "regeneration": {
+    "mode": "hand-authored",
+    "command": "npm run fixtures:manifest -- fixtures/task-format",
+    "verificationCommand": "npm run check:fixtures",
+    "instructions": [
+      "Edit only synthetic fixture source files and preserve the documented schema.",
+      "Refresh this manifest with npm run fixtures:manifest -- fixtures/task-format.",
+      "Review every content and provenance change, then run npm run check:fixtures."
+    ]
+  }
+}

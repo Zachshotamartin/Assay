@@ -111,7 +111,7 @@ describe("deterministic matrix expansion", () => {
 
   it("rejects the seeded post-stringification ID collision fixture", async () => {
     const fixturePath = fileURLToPath(
-      new URL("../fixtures/matrices/collision.matrix.yaml", import.meta.url)
+      new URL("../../../fixtures/task-format/matrices/collision.matrix.yaml", import.meta.url)
     );
     const matrix = parseMatrixBytes(await readFile(fixturePath), fixturePath);
 

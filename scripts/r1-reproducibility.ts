@@ -130,7 +130,7 @@ function createFixedRuntime(repositoryRoot: string, projectRoot: string): Reprod
   );
   const simulatedScenario = resolve(
     repositoryRoot,
-    "packages/adapter-simulated/scenarios/happy-multi-turn.json"
+    "fixtures/trajectories/happy-multi-turn.json"
   );
   return {
     projectRoot,

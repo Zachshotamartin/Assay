@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import type { Dirent } from "node:fs";
 import {
   lstat,
   mkdir,
@@ -14,7 +15,13 @@ import { isDeepStrictEqual } from "node:util";
 
 export const FIXTURE_DIRECTORY_SCHEMA = "assay-fixture-directory/1";
 
-type FixtureKind = "repository" | "suite" | "trajectory";
+type FixtureKind =
+  | "repository"
+  | "suite"
+  | "trajectory"
+  | "task-format"
+  | "adapter-frame"
+  | "contract-event";
 
 export interface R1FixtureGroup {
   readonly id: string;
@@ -108,7 +115,49 @@ export const R1_FIXTURE_GROUPS: readonly R1FixtureGroup[] = Object.freeze([
       "packages/adapter-simulated/src/scenario.test.ts",
       "packages/adapter-simulated/src/subprocess.test.ts"
     ]
+  }),
+  Object.freeze({
+    id: "r1-task-format-corpus",
+    fixtureKind: "task-format",
+    fixturePath: "fixtures/task-format",
+    metadataPath: "fixtures/task-format/metadata.json",
+    manifestRoot: "fixtures/task-format",
+    sourcePaths: ["."],
+    suites: [],
+    consumers: [
+      "packages/task-format/src/load-yaml.test.ts",
+      "packages/task-format/src/matrix.test.ts",
+      "packages/task-format/src/resolve-suite.test.ts",
+      "packages/task-format/src/schemas/schema-corpus.test.ts",
+      "packages/task-format/src/schemas/schema-fixtures.test.ts"
+    ]
+  }),
+  Object.freeze({
+    id: "r1-adapter-frame-corpus",
+    fixtureKind: "adapter-frame",
+    fixturePath: "fixtures/adapter-frames",
+    metadataPath: "fixtures/adapter-frames/metadata.json",
+    manifestRoot: "fixtures/adapter-frames",
+    sourcePaths: ["."],
+    suites: [],
+    consumers: ["packages/adapter-core/src/frames/codec.test.ts"]
+  }),
+  Object.freeze({
+    id: "r1-contract-event-corpus",
+    fixtureKind: "contract-event",
+    fixturePath: "fixtures/contract-events",
+    metadataPath: "fixtures/contract-events/metadata.json",
+    manifestRoot: "fixtures/contract-events",
+    sourcePaths: ["."],
+    suites: [],
+    consumers: ["packages/contracts/src/events.test.ts"]
   })
+]);
+
+const PACKAGE_FIXTURE_DIRECTORY_NAMES = new Set(["fixtures", "scenarios"]);
+const PACKAGE_FIXTURE_DIRECTORY_IGNORES = new Set(["dist", "node_modules"]);
+const ALLOWED_PACKAGE_FIXTURE_HELPERS = new Set([
+  "packages/run-store/src/fixtures/crash-writer.ts"
 ]);
 
 function pathOrder(left: string, right: string): number {
@@ -128,6 +177,65 @@ function isWithin(parentInput: string, childInput: string): boolean {
 
 function sha256(bytes: Uint8Array | string): string {
   return createHash("sha256").update(bytes).digest("hex");
+}
+
+async function containsDisallowedFixtureFile(
+  repositoryRoot: string,
+  directory: string
+): Promise<boolean> {
+  const entries = await readdir(directory, { withFileTypes: true });
+  entries.sort((left, right) => pathOrder(left.name, right.name));
+  for (const entry of entries) {
+    const path = resolve(directory, entry.name);
+    if (entry.isSymbolicLink()) return true;
+    if (entry.isDirectory()) {
+      if (await containsDisallowedFixtureFile(repositoryRoot, path)) return true;
+      continue;
+    }
+    if (
+      !entry.isFile() ||
+      !ALLOWED_PACKAGE_FIXTURE_HELPERS.has(slash(relative(repositoryRoot, path)))
+    ) {
+      return true;
+    }
+  }
+  return false;
+}
+
+async function findFixtureDirectories(
+  repositoryRoot: string,
+  directory: string,
+  found: string[]
+): Promise<void> {
+  let entries: Dirent[];
+  try {
+    entries = await readdir(directory, { withFileTypes: true });
+  } catch (cause) {
+    if ((cause as NodeJS.ErrnoException).code === "ENOENT") return;
+    throw cause;
+  }
+  entries.sort((left, right) => pathOrder(left.name, right.name));
+  for (const entry of entries) {
+    if (!entry.isDirectory() || PACKAGE_FIXTURE_DIRECTORY_IGNORES.has(entry.name)) continue;
+    const path = resolve(directory, entry.name);
+    if (PACKAGE_FIXTURE_DIRECTORY_NAMES.has(entry.name)) {
+      if (await containsDisallowedFixtureFile(repositoryRoot, path)) {
+        found.push(slash(relative(repositoryRoot, path)));
+      }
+      continue;
+    }
+    await findFixtureDirectories(repositoryRoot, path, found);
+  }
+}
+
+export async function findPackageLocalFixtureCorpora(
+  repositoryRootInput: string
+): Promise<readonly string[]> {
+  const repositoryRoot = resolve(repositoryRootInput);
+  const found: string[] = [];
+  await findFixtureDirectories(repositoryRoot, resolve(repositoryRoot, "apps"), found);
+  await findFixtureDirectories(repositoryRoot, resolve(repositoryRoot, "packages"), found);
+  return found.sort(pathOrder);
 }
 
 async function collectFiles(
@@ -242,6 +350,12 @@ export async function verifyR1FixtureGovernance(
   repositoryRootInput: string
 ): Promise<readonly VerifiedFixtureGroup[]> {
   const repositoryRoot = resolve(repositoryRootInput);
+  const packageLocalCorpora = await findPackageLocalFixtureCorpora(repositoryRoot);
+  if (packageLocalCorpora.length > 0) {
+    throw new Error(
+      `product data fixture corpora must live under fixtures/: ${packageLocalCorpora.join(", ")}`
+    );
+  }
   const verified: VerifiedFixtureGroup[] = [];
   for (const group of R1_FIXTURE_GROUPS) {
     const metadataPath = resolve(repositoryRoot, group.metadataPath);

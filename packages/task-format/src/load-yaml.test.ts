@@ -12,7 +12,7 @@ import {
 } from "./index.js";
 
 const schemaFixture = (name: string): string =>
-  fileURLToPath(new URL(`../fixtures/schemas/${name}`, import.meta.url));
+  fileURLToPath(new URL(`../../../fixtures/task-format/schemas/${name}`, import.meta.url));
 
 describe("bounded safe YAML loading", () => {
   it("loads schema-valid task and suite files as inert plain data", async () => {

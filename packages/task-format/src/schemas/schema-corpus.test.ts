@@ -10,7 +10,7 @@ type JsonObject = Record<string, unknown>;
 type JsonPath = readonly (string | number)[];
 
 const fixtureUrl = (name: string): URL =>
-  new URL(`../../fixtures/schemas/accept/${name}`, import.meta.url);
+  new URL(`../../../../fixtures/task-format/schemas/accept/${name}`, import.meta.url);
 
 async function fixture(name: string): Promise<JsonObject> {
   return parse(await readFile(fileURLToPath(fixtureUrl(name)), "utf8"), {

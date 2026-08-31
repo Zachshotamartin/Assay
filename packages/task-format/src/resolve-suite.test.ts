@@ -16,10 +16,10 @@ import {
 
 const digest = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
 const projectRoot = fileURLToPath(
-  new URL("../fixtures/suite-resolution/", import.meta.url)
+  new URL("../../../fixtures/task-format/suite-resolution/", import.meta.url)
 );
 const suitePath = fileURLToPath(
-  new URL("../fixtures/suite-resolution/core.suite.yaml", import.meta.url)
+  new URL("../../../fixtures/task-format/suite-resolution/core.suite.yaml", import.meta.url)
 );
 
 function concreteTask(id: string, tags: readonly string[] = []): TaskDocument {

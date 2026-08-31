@@ -19,7 +19,7 @@
     },
     "./schemas/*": "./schemas/*"
   },
-  "files": ["dist", "schemas", "scenarios"],
+  "files": ["dist", "schemas"],
   "scripts": {
     "build": "tsc -b",
     "typecheck": "tsc -b --pretty false"

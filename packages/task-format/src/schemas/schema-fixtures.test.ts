@@ -10,7 +10,7 @@ import {
 } from "../schema.js";
 
 const fixtureUrl = (name: string): URL =>
-  new URL(`../../fixtures/schemas/${name}`, import.meta.url);
+  new URL(`../../../../fixtures/task-format/schemas/${name}`, import.meta.url);
 
 async function readYamlFixture(name: string): Promise<unknown> {
   const bytes = await readFile(fileURLToPath(fixtureUrl(name)), "utf8");

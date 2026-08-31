@@ -7,7 +7,7 @@ export interface SimulatedAdapterCommandOptions {
 const packageRoot = new URL("../", import.meta.url);
 
 export function resolveSimulatedScenarioPath(): string {
-  return fileURLToPath(new URL("scenarios/happy-multi-turn.json", packageRoot));
+  return fileURLToPath(new URL("../../fixtures/trajectories/happy-multi-turn.json", packageRoot));
 }
 
 export function simulatedAdapterCommand(
